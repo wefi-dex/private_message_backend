@@ -28,8 +28,8 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     return res.status(401).json({ message: 'Invalid username or password.' }) as Response
   }
 
-  const secretKey = config.defaultConfig.jwt.secret
-  const options = { expiresIn: '1h' }
+  const secretKey = config.jwt.secret as string
+  const options: jwt.SignOptions = { expiresIn: "1h" }
   const payload = { id: user.id, username: user.username }
   const token = jwt.sign(payload, secretKey, options)
 
@@ -38,4 +38,3 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   // avatar is now a string (URL or null)
   res.status(200).json({ token, user: userWithoutPassword }) as Response
 })
-
