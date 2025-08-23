@@ -15,6 +15,13 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "db:migrate": "psql -d private_message_db -f postgre/create_user_table.sql && psql -d private_message_db -f postgre/create_block_report_tables.sql && psql -d private_message_db -f postgre/add_role_to_user.sql && psql -d private_message_db -f postgre/add_banned_to_user.sql",
+    "db:email-verification": "node fix-email-verification.js",
+    "test:email": "node test-email-config.js",
+    "test:registration": "node test-registration-flow.js",
+    "clear-db": "node clear-database.js",
+    "test:uuid": "node test-uuid-fix.js",
+    "test:reregistration": "node test-reregistration.js",
+    "db:creator-approval": "node fix-creator-approval.js",
     "db:seed": "node scripts/seed.js",
     "prepare": "husky",
     "clean": "rm -rf dist node_modules package-lock.json",
@@ -24,6 +31,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@types/nodemailer": "^7.0.1",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -32,6 +40,8 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
+    "node-fetch": "^3.3.2",
+    "nodemailer": "^7.0.5",
     "pg": "^8.16.3",
     "socket.io": "^4.7.5",
     "uuid": "^11.1.0",
@@ -66,4 +76,3 @@
     ]
   }
 }
-
