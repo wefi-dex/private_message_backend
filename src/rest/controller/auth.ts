@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 import asyncHandler from '../middleware/asyncHandler'
-import jwt from 'jsonwebtoken'
+import jwt, { SignOptions } from "jsonwebtoken";
 import pool from '../../util/postgre'
 import bcrypt from 'bcrypt'
 import { config } from '../../config'
@@ -373,7 +373,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const secretKey = config.jwt.secret
-  const options = { expiresIn: '1h' }
+  const options: SignOptions = { expiresIn: "1h" };  // TS now understands
   const payload = { id: user.id, username: user.username }
   const token = jwt.sign(payload, secretKey, options)
 
@@ -383,3 +383,4 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   console.log('Backend login: User data being returned:', userWithoutPassword)
   res.status(200).json({ token, user: userWithoutPassword }) as Response
 })
+
