@@ -85,7 +85,7 @@ export class REST {
         const result = await pool.query(
           'SELECT id, username, email, alias, bio, avatar, role, created_at FROM "User" ORDER BY created_at DESC',
         )
-        console.log('Debug endpoint: All users in database:', result.rows)
+        
         res.json({
           success: true,
           message: 'All users from database',
