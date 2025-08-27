@@ -127,7 +127,7 @@ export const initConfig = (): IConfig => {
     cors: {
       origin:
         CORS_ORIGIN ||
-        'http://localhost:3000,http://localhost:19006,http://*:3000,http://*:19006',
+        'http://localhost:3000,http://localhost:19006,http://*:3000,http://*:19006,https://private-messenger-admin-panel.onrender.com',
     },
     logging: {
       level: LOG_LEVEL || 'debug',
