@@ -365,7 +365,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   // Check if user needs to complete profile (for creators)
   if (user.role === 'creator' && !user.creator_profile_completed) {
     const secretKey = config.jwt.secret
-    const options = { expiresIn: '24h' } // Extended to 24 hours
+    const options: jwt.SignOptions = { expiresIn: '24h' } // Extended to 24 hours
     const payload = { id: user.id, username: user.username }
     const token = jwt.sign(payload, secretKey, options)
 
@@ -382,7 +382,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   // Check if user needs to select role (for users without role)
   if (!user.role) {
     const secretKey = config.jwt.secret
-    const options = { expiresIn: '24h' } // Extended to 24 hours
+    const options: jwt.SignOptions = { expiresIn: '24h' } // Extended to 24 hours
     const payload = { id: user.id, username: user.username }
     const token = jwt.sign(payload, secretKey, options)
 
@@ -396,7 +396,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const secretKey = config.jwt.secret
-  const options = { expiresIn: '24h' } // Extended to 24 hours for better user experience
+  const options: jwt.SignOptions = { expiresIn: '24h' } // Extended to 24 hours for better user experience
   const payload = { id: user.id, username: user.username }
   const token = jwt.sign(payload, secretKey, options)
 
