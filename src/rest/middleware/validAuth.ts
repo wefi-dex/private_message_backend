@@ -19,32 +19,32 @@ const userAuthMiddleware = async (
     req.path.startsWith('/download') ||
     req.path.startsWith('/files')
   ) {
-    return next();
+    return next()
   }
-  const authHeader = req.headers['authorization'];
-  let token = undefined;
+
+  const authHeader = req.headers['authorization']
+
+  let token = undefined
   if (authHeader) {
     // Accept both 'Bearer <token>' and just '<token>'
     if (authHeader.startsWith('Bearer ')) {
-      token = authHeader.slice(7);
+      token = authHeader.slice(7)
     } else {
-      token = authHeader;
+      token = authHeader
     }
   }
+
   if (!token) {
     return res.status(403).json({ message: 'Token is required' })
   }
-  jwt.verify(
-    token,
-    config.jwt.secret,
-    (err: any, decoded: any) => {
-      if (err) {
-        return res.status(401).json({ message: 'Invalid token' })
-      }
-      req.user = decoded as JwtPayload
-      next()
-    },
-  )
+
+  jwt.verify(token, config.jwt.secret, (err: any, decoded: any) => {
+    if (err) {
+      return res.status(401).json({ message: 'Invalid token' })
+    }
+    req.user = decoded as JwtPayload
+    next()
+  })
 }
 
 export default userAuthMiddleware
