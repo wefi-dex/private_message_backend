@@ -16,21 +16,21 @@ export class REST {
       next()
     })
 
-    this.app.use((_req: Request, res: Response, next: NextFunction) => {
-      res.header('Access-Control-Allow-Origin', '*')
-      res.header(
-        'Access-Control-Allow-Headers',
-        'Origin, X-Requested-With, Content-Type, Accept, AUTHORIZATION',
-      )
-      next()
-    })
-
     this.app.use(
       cors({
         origin: config.cors.origin.split(',').map((origin) => origin.trim()),
         credentials: true,
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+        allowedHeaders: [
+          'Content-Type',
+          'Authorization',
+          'X-Requested-With',
+          'Origin',
+          'Accept',
+          'Cache-Control',
+          'X-File-Name',
+        ],
+        exposedHeaders: ['Content-Disposition'],
       }),
     )
     this.app.use(helmet())
@@ -85,7 +85,6 @@ export class REST {
         const result = await pool.query(
           'SELECT id, username, email, alias, bio, avatar, role, created_at FROM "User" ORDER BY created_at DESC',
         )
-        
         res.json({
           success: true,
           message: 'All users from database',
