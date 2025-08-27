@@ -4,6 +4,11 @@ import {
   register,
   verifyEmail,
   resendVerificationCode,
+  requestPasswordReset,
+  verifyPasswordResetCode,
+  resetPassword,
+  selectRole,
+  completeCreatorProfile,
 } from './controller/auth'
 import {
   createUser,
@@ -69,10 +74,15 @@ const router: Router = express.Router()
 // Multer setup
 
 // Auth routes
-router.route('/auth/register').post(register)
-router.route('/auth/login').post(login)
-router.route('/auth/verify-email').post(verifyEmail)
-router.route('/auth/resend-verification').post(resendVerificationCode)
+router.post('/auth/register', register)
+router.post('/auth/login', login)
+router.post('/auth/verify-email', verifyEmail)
+router.post('/auth/resend-verification', resendVerificationCode)
+router.post('/auth/forgot-password', requestPasswordReset)
+router.post('/auth/verify-reset-code', verifyPasswordResetCode)
+router.post('/auth/reset-password', resetPassword)
+router.post('/auth/select-role', selectRole)
+router.post('/auth/complete-creator-profile', completeCreatorProfile)
 
 router.route('/user').post(createUser)
 router.route('/user/:id').get(getUser).put(updateUser).delete(deleteUser)
