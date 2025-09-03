@@ -7,17 +7,21 @@ const userAuthMiddleware = async (
   res: Response,
   next: NextFunction,
 ) => {
-  // Allow unauthenticated access to /auth, POST /user (registration), admin endpoints, and file operations
+  // Allow unauthenticated access to authentication endpoints, public file downloads, subscription plans, and admin endpoints
   if (
     req.path.startsWith('/auth') ||
     (req.path === '/user' && req.method === 'POST') ||
     (req.path === '/check-username' && req.method === 'GET') ||
-    req.path.startsWith('/reports') ||
-    req.path.startsWith('/analytics') ||
-    req.path.startsWith('/admin') ||
-    req.path.startsWith('/file') ||
-    req.path.startsWith('/download') ||
-    req.path.startsWith('/files')
+    req.path.startsWith('/files') || // Public file downloads only
+    req.path === '/subscription-plans' || // Public subscription plans
+    // req.path.startsWith('/platform') || // Platform subscription endpoints (for testing)
+    req.path.startsWith('/admin') || // Admin endpoints (for simplified admin panel)
+    req.path.startsWith('/analytics') || // Analytics endpoints (for simplified admin panel)
+    req.path.startsWith('/reports') || // Reports endpoints (for simplified admin panel)
+    req.path === '/user-subscriptions' || // User subscriptions endpoint (for simplified admin panel)
+    (req.path.startsWith('/creator') && !req.path.includes('/payment-')) || // Creator feed endpoints (for testing) but not payment settings
+    req.path.startsWith('/posts') || // Posts endpoints (for testing)
+    req.path.startsWith('/fan') // Fan feed endpoints (for testing)
   ) {
     return next()
   }

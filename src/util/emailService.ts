@@ -25,6 +25,13 @@ export class EmailService {
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
     try {
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(options.to)) {
+        console.error('Invalid email format:', options.to)
+        return false
+      }
+
       const mailOptions = {
         from: config.email.from,
         to: options.to,

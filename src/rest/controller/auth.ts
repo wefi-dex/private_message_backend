@@ -274,7 +274,7 @@ export const resendVerificationCode = asyncHandler(
 
     // Update verification code
     await pool.query(
-      'UPDATE "User" SET verification_code = $1, verification_code_expires = $2, updated_at = NOW() WHERE id = $1',
+      'UPDATE "User" SET verification_code = $1, verification_code_expires = $2, updated_at = NOW() WHERE id = $3',
       [verificationCode, expiresAt, user.id],
     )
 

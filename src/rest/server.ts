@@ -80,22 +80,24 @@ export class REST {
     })
 
     // Debug endpoint to view all users (for development only)
-    this.app.get('/debug/users', async (_req: Request, res: Response) => {
-      try {
-        const result = await pool.query(
-          'SELECT id, username, email, alias, bio, avatar, role, created_at FROM "User" ORDER BY created_at DESC',
-        )
-        res.json({
-          success: true,
-          message: 'All users from database',
-          count: result.rows.length,
-          users: result.rows,
-        })
-      } catch (error) {
-        console.error('Debug endpoint error:', error)
-        res.status(500).json({ success: false, message: 'Database error' })
-      }
-    })
+    if (config.isDevelopment) {
+      this.app.get('/debug/users', async (_req: Request, res: Response) => {
+        try {
+          const result = await pool.query(
+            'SELECT id, username, email, alias, bio, avatar, role, created_at FROM "User" ORDER BY created_at DESC',
+          )
+          res.json({
+            success: true,
+            message: 'All users from database',
+            count: result.rows.length,
+            users: result.rows,
+          })
+        } catch (error) {
+          console.error('Debug endpoint error:', error)
+          res.status(500).json({ success: false, message: 'Database error' })
+        }
+      })
+    }
 
     // Keep this for non-API routes
     this.app.use((_, res) => {
