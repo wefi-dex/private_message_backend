@@ -6,6 +6,7 @@ import { config } from '../config'
 import { logger } from '../util/logger'
 import userAuthMiddleware from './middleware/validAuth'
 import pool from '../util/postgre'
+import { fileService } from '../util/fileService'
 
 export class REST {
   public app = express()
@@ -52,20 +53,41 @@ export class REST {
     )
 
     // Public file download endpoint (no authentication required)
-    this.app.get('/files/:filename', (req, res) => {
+    this.app.get('/files/:filename', async (req, res) => {
       const { filename } = req.params
-      const filePath = require('path').join(
-        __dirname,
-        '../../../uploads',
-        filename,
-      )
-      const fs = require('fs')
-      if (!fs.existsSync(filePath)) {
-        return res
-          .status(404)
-          .json({ success: false, message: 'File not found.' })
+
+      try {
+        const fileInfo = await fileService.getFileInfo(filename)
+        if (!fileInfo) {
+          return res
+            .status(404)
+            .json({ success: false, message: 'File not found.' })
+        }
+
+        const { stream } = fileService.createFileStream(filename)
+
+        res.setHeader(
+          'Content-Type',
+          fileInfo.mimeType || 'application/octet-stream',
+        )
+        res.setHeader(
+          'Content-Disposition',
+          `inline; filename="${fileInfo.filename}"`,
+        )
+        res.setHeader('Content-Length', fileInfo.size)
+
+        stream.pipe(res)
+
+        stream.on('error', (error) => {
+          console.error('File stream error:', error)
+          if (!res.headersSent) {
+            res.status(500).json({ success: false, message: 'Error reading file.' })
+          }
+        })
+      } catch (error) {
+        console.error('Error serving file:', error)
+        res.status(500).json({ success: false, message: 'Error serving file.' })
       }
-      res.download(filePath, filename)
     })
 
     // Protected API routes (authentication required)

@@ -3,6 +3,7 @@ import asyncHandler from '../middleware/asyncHandler'
 import path from 'path'
 import fs from 'fs'
 import multer from 'multer'
+import { fileService } from '../../util/fileService'
 
 // Extend Express Request type for multer
 interface MulterRequest extends ExpressRequest {
@@ -12,7 +13,8 @@ interface MulterRequest extends ExpressRequest {
 // Multer storage with original extension
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadPath = path.join(__dirname, '../../../uploads')
+    // Use FileService to get the correct uploads path (handles Render disk storage)
+    const uploadPath = fileService.getUploadsPath()
     cb(null, uploadPath)
   },
   filename: function (req, file, cb) {
@@ -104,39 +106,38 @@ export const downloadFile = asyncHandler(
         .json({ success: false, message: 'Filename is required.' })
     }
 
-    // Security: Prevent directory traversal attacks
-    const sanitizedFilename = path.basename(filename)
-    const filePath = path.join(__dirname, '../../../uploads', sanitizedFilename)
-
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      return res
-        .status(404)
-        .json({ success: false, message: 'File not found.' })
-    }
-
-    // Get file stats for additional info
-    const stats = fs.statSync(filePath)
-
-    // Set appropriate headers
-    res.setHeader('Content-Type', 'application/octet-stream')
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${sanitizedFilename}"`,
-    )
-    res.setHeader('Content-Length', stats.size)
-
-    // Stream the file
-    const fileStream = fs.createReadStream(filePath)
-    fileStream.pipe(res)
-
-    // Handle stream errors
-    fileStream.on('error', (error) => {
-      console.error('File stream error:', error)
-      if (!res.headersSent) {
-        res.status(500).json({ success: false, message: 'Error reading file.' })
+    try {
+      const fileInfo = await fileService.getFileInfo(filename)
+      if (!fileInfo) {
+        return res
+          .status(404)
+          .json({ success: false, message: 'File not found.' })
       }
-    })
+
+      const { stream } = fileService.createFileStream(filename)
+
+      res.setHeader(
+        'Content-Type',
+        fileInfo.mimeType || 'application/octet-stream',
+      )
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${fileInfo.filename}"`,
+      )
+      res.setHeader('Content-Length', fileInfo.size)
+
+      stream.pipe(res)
+
+      stream.on('error', (error) => {
+        console.error('File stream error:', error)
+        if (!res.headersSent) {
+          res.status(500).json({ success: false, message: 'Error reading file.' })
+        }
+      })
+    } catch (error) {
+      console.error('Error downloading file:', error)
+      res.status(500).json({ success: false, message: 'Error downloading file.' })
+    }
   },
 )
 
