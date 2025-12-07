@@ -87,7 +87,6 @@ describe('Payment System Test Suite', function () {
 
   // Setup before all tests
   before(async () => {
-    console.log('Setting up test environment...')
 
     try {
       // Create test users
@@ -102,7 +101,6 @@ describe('Payment System Test Suite', function () {
       subscriberToken = await generateAuthToken(testUsers.subscriber)
       adminToken = await generateAuthToken(testUsers.admin)
 
-      console.log('Test environment setup complete')
     } catch (error) {
       console.error('Setup failed:', error)
       throw error
@@ -609,16 +607,6 @@ describe('Payment System Test Suite', function () {
       const responseTime = Date.now() - startTime
       expect(responseTime).to.be.lessThan(5000) // 5 seconds max
     })
-  })
-
-  // Cleanup after all tests
-  after(async () => {
-    console.log('Cleaning up test data...')
-
-    // Clean up test data if needed
-    // This would typically involve deleting test users, subscriptions, etc.
-
-    console.log('Test cleanup complete')
   })
 })
 

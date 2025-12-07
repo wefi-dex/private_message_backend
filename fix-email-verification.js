@@ -9,7 +9,6 @@ async function runEmailVerificationMigration() {
   })
 
   try {
-    console.log('🔧 Running email verification migration...')
 
     const client = await pool.connect()
 
@@ -23,7 +22,6 @@ async function runEmailVerificationMigration() {
       )
       const migrationSQL = fs.readFileSync(migrationPath, 'utf8')
 
-      console.log('Migration SQL:', migrationSQL)
 
       // Split and execute each statement
       const statements = migrationSQL.split(';').filter((stmt) => stmt.trim())
@@ -31,12 +29,10 @@ async function runEmailVerificationMigration() {
       for (const statement of statements) {
         if (statement.trim()) {
           await client.query(statement)
-          console.log('✅ Executed:', statement.trim().substring(0, 50) + '...')
         }
       }
 
       await client.query('COMMIT')
-      console.log('✅ Email verification migration completed successfully!')
 
       // Verify the columns were added
       const result = await client.query(`
@@ -46,7 +42,6 @@ async function runEmailVerificationMigration() {
         ORDER BY column_name
       `)
 
-      console.log('✅ Verified columns:')
       result.rows.forEach((row) => {
         console.log(
           `  - ${row.column_name}: ${row.data_type} (nullable: ${row.is_nullable})`,

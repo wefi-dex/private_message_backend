@@ -34,11 +34,6 @@ const colors = {
   cyan: '\x1b[36m',
 }
 
-// Helper functions
-const log = (message, color = 'reset') => {
-  console.log(`${colors[color]}${message}${colors.reset}`)
-}
-
 const logHeader = (title) => {
   log('\n' + '='.repeat(60), 'cyan')
   log(`  ${title}`, 'bright')

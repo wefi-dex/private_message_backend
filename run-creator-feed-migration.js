@@ -11,7 +11,6 @@ const pool = new Pool({
 
 async function runMigration() {
   try {
-    console.log('Starting creator feed migration...')
 
     // Read the migration SQL file
     const migrationPath = path.join(
@@ -23,18 +22,11 @@ async function runMigration() {
 
     // Execute the migration
     await pool.query(sql)
-
-    console.log('✅ Creator feed migration completed successfully!')
-    console.log(
-      'Created tables: creator_posts, post_likes, post_comments, followers',
-    )
-    console.log('Added indexes and triggers for better performance')
   } catch (error) {
     console.error('❌ Migration failed:', error.message)
 
     // If tables already exist, that's okay
     if (error.message.includes('already exists')) {
-      console.log('ℹ️  Tables already exist, migration skipped')
       return
     }
 
@@ -47,7 +39,6 @@ async function runMigration() {
 // Run the migration
 runMigration()
   .then(() => {
-    console.log('Migration process completed')
     process.exit(0)
   })
   .catch((error) => {

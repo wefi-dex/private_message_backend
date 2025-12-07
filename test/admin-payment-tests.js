@@ -477,7 +477,6 @@ describe('Admin Payment Review Tests', function () {
 
   after(async () => {
     // Clean up test data
-    console.log('Cleaning up admin payment test data...')
 
     // Delete test records if they exist
     if (testPayoutRequestId) {
@@ -505,8 +504,6 @@ describe('Admin Payment Review Tests', function () {
         console.log('Cleanup warning:', error.message)
       }
     }
-
-    console.log('Admin payment test cleanup complete')
   })
 })
 

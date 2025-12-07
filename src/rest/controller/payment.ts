@@ -329,9 +329,6 @@ export const cancelPlatformSubscription = asyncHandler(
     // For testing purposes, use a default creator ID if no authenticated user
     if (!creatorId) {
       creatorId = '922d9805-ee01-4f9b-a121-6129d684d4bf' // Test creator ID
-      console.log(
-        'Using test creator ID for platform subscription cancellation',
-      )
     }
 
     if (!subscriptionId) {
@@ -390,7 +387,6 @@ export const checkCreatorPostingPermission = asyncHandler(
     // For testing purposes, use a default creator ID if no authenticated user
     if (!creatorId) {
       creatorId = '922d9805-ee01-4f9b-a121-6129d684d4bf' // Test creator ID
-      console.log('Using test creator ID for posting permission check')
     }
 
     try {
