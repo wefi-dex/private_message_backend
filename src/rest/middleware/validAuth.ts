@@ -13,6 +13,7 @@ const userAuthMiddleware = async (
     (req.path === '/user' && req.method === 'POST') ||
     (req.path === '/check-username' && req.method === 'GET') ||
     req.path.startsWith('/files') || // Public file downloads only
+    req.path.startsWith('/file/upload') || // Allow image/file uploads during onboarding
     req.path === '/subscription-plans' || // Public subscription plans
     // req.path.startsWith('/platform') || // Platform subscription endpoints (for testing)
     req.path.startsWith('/admin') || // Admin endpoints (for simplified admin panel)

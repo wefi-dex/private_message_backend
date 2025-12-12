@@ -10,8 +10,16 @@ export interface EmailOptions {
 
 export class EmailService {
   private transporter: nodemailer.Transporter
+  private isConfigured: boolean
 
   constructor() {
+    // Check if email is configured
+    this.isConfigured = !!(config.email.user && config.email.password && config.email.host)
+
+    if (!this.isConfigured) {
+      console.warn('Email service is not fully configured. EMAIL_USER, EMAIL_PASSWORD, or EMAIL_HOST may be missing.')
+    }
+
     this.transporter = nodemailer.createTransport({
       host: config.email.host,
       port: config.email.port,
@@ -21,10 +29,23 @@ export class EmailService {
         pass: config.email.password,
       },
     })
+
+    // Verify connection on startup (optional, can be removed if it causes issues)
+    this.transporter.verify().then(() => {
+      console.log('Email service is ready')
+    }).catch((error) => {
+      console.error('Email service verification failed:', error.message)
+    })
   }
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
     try {
+      // Check if email is configured
+      if (!this.isConfigured) {
+        console.error('Email service is not configured. Please set EMAIL_USER, EMAIL_PASSWORD, and EMAIL_HOST environment variables.')
+        return false
+      }
+
       // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(options.to)) {
@@ -40,10 +61,22 @@ export class EmailService {
         text: options.text,
       }
 
-      await this.transporter.sendMail(mailOptions)
+      const info = await this.transporter.sendMail(mailOptions)
+      console.log('Email sent successfully:', {
+        to: options.to,
+        messageId: info.messageId,
+        response: info.response,
+      })
       return true
-    } catch (error) {
-      console.error('Email sending failed:', error)
+    } catch (error: any) {
+      console.error('Email sending failed:', {
+        to: options.to,
+        error: error.message,
+        code: error.code,
+        command: error.command,
+        response: error.response,
+        responseCode: error.responseCode,
+      })
       return false
     }
   }
