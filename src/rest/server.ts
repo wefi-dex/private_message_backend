@@ -52,8 +52,9 @@ export class REST {
       },
     )
 
-    // Public file download endpoint (no authentication required)
-    this.app.get('/files/:filename', async (req, res) => {
+    // Public file download endpoints (no authentication required)
+    // Serve files from uploads folder via /uploads/:filename route
+    this.app.get('/uploads/:filename', async (req, res) => {
       const { filename } = req.params
 
       try {

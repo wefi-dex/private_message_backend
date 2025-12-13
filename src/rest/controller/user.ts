@@ -7,7 +7,7 @@ import bcrypt from 'bcrypt';
 // CREATE USER
 export const createUser = asyncHandler(async (req: Request, res: Response) => {
   const body = req.body;
-  
+
   if (!body.password) {
     return res.status(400).json({ success: false, message: 'Password is required.' }) as Response;
   }
@@ -57,16 +57,16 @@ export const updateUser = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.params.id;
   const body = req.body;
   const updated_at = new Date();
-  
+
   try {
     // First get the current user data
     const currentUserResult = await pool.query('SELECT * FROM "User" WHERE id = $1', [userId]);
     if (currentUserResult.rowCount === 0) {
       return res.status(404).json({ success: false, error: 'User not found.' });
     }
-    
+
     const currentUser = currentUserResult.rows[0];
-    
+
     // Merge current data with new data (partial update)
     const updatedUser = {
       phone: body.phone !== undefined ? body.phone : currentUser.phone,
@@ -77,7 +77,7 @@ export const updateUser = asyncHandler(async (req: Request, res: Response) => {
       alias: body.alias !== undefined ? body.alias : currentUser.alias,
       updated_at
     };
-    
+
     const result = await pool.query(
       `UPDATE "User" SET phone = $1, username = $2, bio = $3, avatar = $4, role = $5, alias = $6, updated_at = $7 WHERE id = $8 RETURNING *`,
       [
@@ -91,7 +91,7 @@ export const updateUser = asyncHandler(async (req: Request, res: Response) => {
         userId
       ]
     );
-    
+
     return res.status(200).json({success: true, message: 'User is successfully updated', data: result.rows[0]});
   } catch (error) {
     return res.status(400).json({ success: false, error });
@@ -112,7 +112,7 @@ export const getUser = asyncHandler(async (req: Request, res: Response) => {
   } catch (error) {
     return res.status(400).json({success: false, error});
   }
-}); 
+});
 
 // GET ALL USERS
 export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
@@ -122,12 +122,12 @@ export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
   } catch (error) {
     return res.status(400).json({ success: false, error });
   }
-}); 
+});
 
 // CHECK USERNAME DUPLICATE
 export const checkUsernameDuplicate = asyncHandler(async (req: Request, res: Response) => {
   let { username } = req.query;
-  
+
   if (Array.isArray(username)) {
     username = username[0];
   }
@@ -141,23 +141,36 @@ export const checkUsernameDuplicate = asyncHandler(async (req: Request, res: Res
     console.error('DB error in checkUsernameDuplicate:', err);
     return res.status(500).json({ available: false, message: 'Database error', error: err });
   }
-}); 
+});
 
 // CREATE USER CONNECTION
 export const createUserConnection = asyncHandler(async (req: Request, res: Response) => {
-  const { user_id, target_user_id } = req.body;
+  const { user_id, target_user_id, status } = req.body;
   if (!user_id || !target_user_id) {
     return res.status(400).json({ success: false, message: 'user_id and target_user_id are required.' });
   }
   if (user_id === target_user_id) {
     return res.status(400).json({ success: false, message: 'Cannot connect to yourself.' });
   }
+
+  // Default to 'pending' if status not provided, allow 'accepted' for invite codes
+  const connectionStatus = status === 'accepted' ? 'accepted' : 'pending';
+
   try {
+    // Create connection from user to target
     const result = await pool.query(
-      `INSERT INTO "UserConnection" (user_id, target_user_id, status) VALUES ($1, $2, 'pending') ON CONFLICT (user_id, target_user_id) DO NOTHING RETURNING id`,
-      [user_id, target_user_id]
+      `INSERT INTO "UserConnection" (user_id, target_user_id, status) VALUES ($1, $2, $3) ON CONFLICT (user_id, target_user_id) DO UPDATE SET status = $3 RETURNING id`,
+      [user_id, target_user_id, connectionStatus]
     );
-    
+
+    // If status is 'accepted', also create the reverse connection (bidirectional)
+    if (connectionStatus === 'accepted') {
+      await pool.query(
+        `INSERT INTO "UserConnection" (user_id, target_user_id, status) VALUES ($1, $2, $3) ON CONFLICT (user_id, target_user_id) DO UPDATE SET status = $3`,
+        [target_user_id, user_id, 'accepted']
+      );
+    }
+
     // If a new connection was created, trigger Firebase update
     if (result.rows.length > 0) {
       try {
@@ -166,20 +179,24 @@ export const createUserConnection = asyncHandler(async (req: Request, res: Respo
         await connectionRequestsRef.set({
           timestamp: Date.now(),
           from: user_id,
-          connectionId: result.rows[0].id
+          connectionId: result.rows[0].id,
+          status: connectionStatus
         });
       } catch (firebaseError) {
         console.error('Firebase update failed:', firebaseError);
         // Don't fail the request if Firebase update fails
       }
     }
-    
-    return res.status(200).json({ success: true, message: 'Connection request sent.' });
+
+    const message = connectionStatus === 'accepted'
+      ? 'Connection created and accepted.'
+      : 'Connection request sent.';
+    return res.status(200).json({ success: true, message, connectionId: result.rows[0]?.id });
   } catch (error) {
     console.error('Error while creating user connection:', error);
     return res.status(400).json({ success: false, message: 'Error while creating connection.', error });
   }
-}); 
+});
 
 // GET USER CONNECTION STATUS
 export const getUserConnectionStatus = asyncHandler(async (req: Request, res: Response) => {
@@ -200,7 +217,7 @@ export const getUserConnectionStatus = asyncHandler(async (req: Request, res: Re
   } catch (error) {
     return res.status(400).json({ status: null, message: 'Failed to get connection status', error });
   }
-}); 
+});
 
 // GET USER BY USERNAME WITH CONNECTION STATUS
 export const getUserByUsername = asyncHandler(async (req: Request, res: Response) => {
@@ -258,24 +275,24 @@ export const getPendingConnectionRequests = asyncHandler(async (req: Request, re
 export const respondToConnectionRequest = asyncHandler(async (req: Request, res: Response) => {
   const { connection_id } = req.params;
   const { action } = req.body; // 'accept' or 'reject'
-  
+
   if (!connection_id || !action || !['accept', 'reject'].includes(action)) {
     return res.status(400).json({ success: false, message: 'connection_id and action (accept/reject) are required' });
   }
-  
+
   try {
     // Get the connection details first
     const connectionResult = await pool.query(
       'SELECT user_id, target_user_id FROM "UserConnection" WHERE id = $1',
       [connection_id]
     );
-    
+
     if (connectionResult.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Connection request not found' });
     }
-    
+
     const { user_id, target_user_id } = connectionResult.rows[0];
-    
+
     if (action === 'accept') {
       await pool.query(
         'UPDATE "UserConnection" SET status = $1 WHERE id = $2',
@@ -287,11 +304,11 @@ export const respondToConnectionRequest = asyncHandler(async (req: Request, res:
         [connection_id]
       );
     }
-    
+
     // Trigger Firebase update for both users
     try {
       const { db } = await import('../../utils/firebase');
-      
+
       // Update for the creator (target_user_id)
       const creatorRef = db.ref(`connectionRequests/${target_user_id}`);
       await creatorRef.set({
@@ -300,7 +317,7 @@ export const respondToConnectionRequest = asyncHandler(async (req: Request, res:
         connectionId: connection_id,
         from: user_id
       });
-      
+
       // Update for the fan (user_id) - they might want to know their request was processed
       const fanRef = db.ref(`connectionRequests/${user_id}`);
       await fanRef.set({
@@ -313,10 +330,10 @@ export const respondToConnectionRequest = asyncHandler(async (req: Request, res:
       console.error('Firebase update failed:', firebaseError);
       // Don't fail the request if Firebase update fails
     }
-    
-    return res.status(200).json({ 
-      success: true, 
-      message: `Connection request ${action}ed successfully` 
+
+    return res.status(200).json({
+      success: true,
+      message: `Connection request ${action}ed successfully`
     });
   } catch (error) {
     return res.status(400).json({ success: false, message: 'Failed to respond to request', error });
@@ -356,10 +373,10 @@ export const getConnectedUsers = asyncHandler(async (req: Request, res: Response
       `SELECT DISTINCT u.id, u.username, u.alias, u.bio, u.avatar, u.role, u.created_at, u.updated_at
        FROM "User" u
        INNER JOIN "UserConnection" uc ON (
-         (uc.user_id = $1 AND uc.target_user_id = u.id) OR 
+         (uc.user_id = $1 AND uc.target_user_id = u.id) OR
          (uc.target_user_id = $1 AND uc.user_id = u.id)
        )
-       WHERE uc.status = 'accepted' 
+       WHERE uc.status = 'accepted'
          AND u.id != $1
          AND u.id NOT IN (
            SELECT blocked_id FROM "UserBlock" WHERE blocker_id = $1
@@ -374,7 +391,7 @@ export const getConnectedUsers = asyncHandler(async (req: Request, res: Response
   } catch (error) {
     return res.status(400).json({ success: false, message: 'Failed to get connected users', error });
   }
-}); 
+});
 
 // BLOCK USER
 export const blockUser = asyncHandler(async (req: Request, res: Response) => {
@@ -391,13 +408,13 @@ export const blockUser = asyncHandler(async (req: Request, res: Response) => {
     if (userResult.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'User to block not found' });
     }
-    
+
     // Insert block record
     await pool.query(
       'INSERT INTO "UserBlock" (blocker_id, blocked_id) VALUES ($1, $2) ON CONFLICT (blocker_id, blocked_id) DO NOTHING',
       [blocker_id, blocked_id]
     );
-    
+
     return res.status(200).json({ success: true, message: 'User blocked successfully' });
   } catch (error) {
     return res.status(400).json({ success: false, message: 'Failed to block user', error });
@@ -415,11 +432,11 @@ export const unblockUser = asyncHandler(async (req: Request, res: Response) => {
       'DELETE FROM "UserBlock" WHERE blocker_id = $1 AND blocked_id = $2',
       [blocker_id, blocked_id]
     );
-    
+
     if (result.rowCount === 0) {
       return res.status(404).json({ success: false, message: 'Block record not found' });
     }
-    
+
     return res.status(200).json({ success: true, message: 'User unblocked successfully' });
   } catch (error) {
     return res.status(400).json({ success: false, message: 'Failed to unblock user', error });
@@ -458,18 +475,18 @@ export const checkIfBlocked = asyncHandler(async (req: Request, res: Response) =
       'SELECT * FROM "UserBlock" WHERE (blocker_id = $1 AND blocked_id = $2) OR (blocker_id = $2 AND blocked_id = $1)',
       [user_id, target_user_id]
     );
-    
+
     const isBlocked = result.rows.length > 0;
     const blockedByMe = result.rows.some(row => row.blocker_id === user_id);
     const blockedByThem = result.rows.some(row => row.blocker_id === target_user_id);
-    
-    return res.status(200).json({ 
-      success: true, 
-      data: { 
-        isBlocked, 
-        blockedByMe, 
-        blockedByThem 
-      } 
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        isBlocked,
+        blockedByMe,
+        blockedByThem
+      }
     });
   } catch (error) {
     return res.status(400).json({ success: false, message: 'Failed to check block status', error });
@@ -491,15 +508,15 @@ export const reportUser = asyncHandler(async (req: Request, res: Response) => {
     if (userResult.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'User to report not found' });
     }
-    
+
     // Insert report record
     const result = await pool.query(
       'INSERT INTO "UserReport" (reporter_id, reported_id, reason, description) VALUES ($1, $2, $3, $4) RETURNING id',
       [reporter_id, reported_id, reason, description || null]
     );
-    
-    return res.status(200).json({ 
-      success: true, 
+
+    return res.status(200).json({
+      success: true,
       message: 'User reported successfully',
       reportId: result.rows[0].id
     });
