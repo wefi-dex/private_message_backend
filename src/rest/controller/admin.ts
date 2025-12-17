@@ -511,3 +511,126 @@ export const getReportStats = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
+
+// Get pending creators (creators waiting for approval)
+export const getPendingCreators = async (req: Request, res: Response) => {
+  try {
+    const query = `
+      SELECT 
+        u.id,
+        u.username,
+        u.email,
+        u.alias,
+        u.bio,
+        u.avatar,
+        u.role,
+        u.created_at,
+        u.updated_at,
+        u.creator_approved,
+        u.creator_approval_date,
+        u.creator_approval_admin_id,
+        u.creator_approval_notes
+      FROM "User" u
+      WHERE u.role = 'creator' 
+        AND (u.creator_approved IS NULL OR u.creator_approved = FALSE)
+      ORDER BY u.created_at ASC
+    `;
+    
+    const result = await pool.query(query);
+    
+    const creators = result.rows.map((row: any) => ({
+      id: row.id,
+      username: row.username,
+      email: row.email || null,
+      alias: row.alias || null,
+      bio: row.bio || null,
+      avatar: row.avatar || null,
+      role: row.role,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      creator_approved: row.creator_approved || false,
+      creator_approval_date: row.creator_approval_date || null,
+      creator_approval_admin_id: row.creator_approval_admin_id || null,
+      creator_approval_notes: row.creator_approval_notes || null
+    }));
+
+    res.json({ success: true, data: creators });
+  } catch (error) {
+    logger.error('Error getting pending creators:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// Approve or reject a creator
+export const approveCreator = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { approved, notes } = req.body;
+    const adminId = req.user?.id || 'admin'; // Get admin ID from auth or use default
+    
+    if (typeof approved !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'Approved status must be a boolean' });
+    }
+    
+    // First check if creator exists
+    const userCheckQuery = 'SELECT id, username, role FROM "User" WHERE id = $1';
+    const userCheckResult = await pool.query(userCheckQuery, [id]);
+    
+    if (userCheckResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Creator not found' });
+    }
+    
+    const user = userCheckResult.rows[0];
+    
+    if (user.role !== 'creator') {
+      return res.status(400).json({ success: false, message: 'User is not a creator' });
+    }
+    
+    // Update creator approval status
+    const updateQuery = `
+      UPDATE "User" 
+      SET 
+        creator_approved = $1,
+        creator_approval_date = $2,
+        creator_approval_admin_id = $3,
+        creator_approval_notes = $4,
+        updated_at = NOW()
+      WHERE id = $5
+      RETURNING 
+        id, 
+        username, 
+        email, 
+        alias, 
+        bio, 
+        avatar, 
+        creator_approved, 
+        creator_approval_date, 
+        creator_approval_admin_id, 
+        creator_approval_notes
+    `;
+    
+    const approvalDate = approved ? new Date() : null;
+    const result = await pool.query(updateQuery, [
+      approved,
+      approvalDate,
+      adminId,
+      notes || null,
+      id
+    ]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Creator not found' });
+    }
+    
+    const updatedCreator = result.rows[0];
+    
+    res.json({ 
+      success: true, 
+      message: `Creator "${updatedCreator.username}" has been ${approved ? 'approved' : 'rejected'} successfully`,
+      data: updatedCreator
+    });
+  } catch (error) {
+    logger.error('Error approving creator:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};

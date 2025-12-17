@@ -2,7 +2,7 @@ import express, { Router } from 'express'
 import { login } from './controller/auth'
 import { createUser, deleteUser, getUser, updateUser, getAllUsers, checkUsernameDuplicate, createUserConnection, getUserConnectionStatus, getUserByUsername, getPendingConnectionRequests, respondToConnectionRequest, getConnectionHistory, getConnectedUsers, blockUser, unblockUser, getBlockedUsers, checkIfBlocked, reportUser, getUserReports } from './controller/user'
 import { uploadFile, downloadFile, upload } from './controller/file';
-import { getAllReports, getReport, updateReportStatus, deleteReport, getDashboardStats, getUserStats, getReportStats, getAllUsers as getAdminUsers, deleteUser as deleteAdminUser, banUser, unbanUser } from './controller/admin';
+import { getAllReports, getReport, updateReportStatus, deleteReport, getDashboardStats, getUserStats, getReportStats, getAllUsers as getAdminUsers, deleteUser as deleteAdminUser, banUser, unbanUser, getPendingCreators, approveCreator } from './controller/admin';
 
 const router: Router = express.Router()
 
@@ -35,6 +35,8 @@ router.route('/admin/users').get(getAdminUsers)
 router.route('/admin/users/:id').delete(deleteAdminUser)
 router.route('/admin/users/:id/ban').post(banUser)
 router.route('/admin/users/:id/unban').post(unbanUser)
+router.route('/admin/creators/pending').get(getPendingCreators)
+router.route('/admin/creators/:id/approve').post(approveCreator)
 router.route('/reports').get(getAllReports)
 router.route('/report/:id').get(getReport).put(updateReportStatus).delete(deleteReport)
 router.route('/analytics/dashboard').get(getDashboardStats)
