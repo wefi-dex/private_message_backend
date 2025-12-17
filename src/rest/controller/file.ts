@@ -25,12 +25,12 @@ const storage = multer.diskStorage({
 export const upload = multer({ storage });
 
 // File upload handler (multer will handle the actual file saving)
-export const uploadFile = asyncHandler(async (req: MulterRequest, res: Response) => {
-  
+export const uploadFile = asyncHandler(async (req: MulterRequest, res: Response) => {  
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'No file uploaded.' });
   }
   // Optionally, you can store file info in DB here
+  console.log("req.file.filename");
   res.status(200).json({ success: true, filename: req.file.filename, originalname: req.file.originalname });
 });
 

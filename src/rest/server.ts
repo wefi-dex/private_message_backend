@@ -24,7 +24,12 @@ export class REST {
       next()
     })
 
-    this.app.use(cors())
+    this.app.use(cors({
+      origin: config.cors.origin.split(',').map(origin => origin.trim()),
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    }))
     this.app.use(helmet())
     this.app.use(express.json())
     this.app.use('/api', userAuthMiddleware)
@@ -42,8 +47,8 @@ export class REST {
       res.send('pong')
     })
 
-    this.app.listen(config.port, async () => {
-      logger.info(`API is running on port ${config.port}`)
+    this.app.listen(config.port, '0.0.0.0', async () => {
+      logger.info(`API is running on port ${config.port} and accessible from all network interfaces`)
     })
   }
 }

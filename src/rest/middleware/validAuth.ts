@@ -8,14 +8,23 @@ const userAuthMiddleware = async (
   next: NextFunction,
 ) => {
   // Allow unauthenticated access to /auth, POST /user (registration), and admin endpoints
-  if (
-    req.path.startsWith('/auth') ||
-    (req.path === '/user' && req.method === 'POST') ||
-    (req.path === '/check-username' && req.method === 'GET') ||
-    req.path.startsWith('/reports') ||
-    req.path.startsWith('/analytics') ||
-    req.path.startsWith('/admin')
-  ) {
+  // Check both req.path (relative to mount point) and req.originalUrl (full path)
+  const path = req.path;
+  const originalUrl = req.originalUrl || req.url;
+  
+  // Helper to check if path matches any of the allowed patterns
+  const isAllowedPath = (checkPath: string) => {
+    return (
+      checkPath.startsWith('/auth') ||
+      (checkPath === '/user' && req.method === 'POST') ||
+      (checkPath === '/check-username' && req.method === 'GET') ||
+      checkPath.startsWith('/reports') ||
+      checkPath.startsWith('/analytics') ||
+      checkPath.startsWith('/admin')
+    );
+  };
+  
+  if (isAllowedPath(path) || isAllowedPath(originalUrl)) {
     return next();
   }
   const authHeader = req.headers['authorization'];
