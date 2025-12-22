@@ -88,11 +88,9 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     const existing = existingUser.rows[0]
     if (existing.email === sanitizedEmail) {
       if (existing.email_verified) {
-        return res
-          .status(400)
-          .json({
-            message: 'Email is already registered and verified.',
-          }) as Response
+        return res.status(400).json({
+          message: 'Email is already registered and verified.',
+        }) as Response
       } else {
         return res.status(400).json({
           message:
@@ -168,11 +166,9 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
         .status(400)
         .json({ message: 'Email or username already exists.' }) as Response
     }
-    return res
-      .status(500)
-      .json({
-        message: 'Failed to register user. Please try again.',
-      }) as Response
+    return res.status(500).json({
+      message: 'Failed to register user. Please try again.',
+    }) as Response
   }
 })
 
@@ -305,6 +301,128 @@ export const resendVerificationCode = asyncHandler(
     return res.status(200).json({
       message: 'Verification code sent to your email.',
       emailSent: true,
+    }) as Response
+  },
+)
+
+// SELECT ROLE
+export const selectRole = asyncHandler(async (req: Request, res: Response) => {
+  const { username, role } = req.body
+
+  if (!username || !role) {
+    return res.status(400).json({
+      message: 'Username and role are required.',
+    }) as Response
+  }
+
+  if (role !== 'creator' && role !== 'fan') {
+    return res.status(400).json({
+      message: 'Role must be either "creator" or "fan".',
+    }) as Response
+  }
+
+  // Find user by username
+  const userResult = await pool.query(
+    'SELECT * FROM "User" WHERE username = $1',
+    [username],
+  )
+
+  if (userResult.rows.length === 0) {
+    return res.status(404).json({
+      message: 'User not found.',
+    }) as Response
+  }
+
+  const user = userResult.rows[0]
+
+  // Check if email is verified (required for role selection)
+  if (!user.email_verified) {
+    return res.status(400).json({
+      message: 'Email must be verified before selecting a role.',
+    }) as Response
+  }
+
+  // Update user role
+  const updated_at = new Date()
+  await pool.query(
+    'UPDATE "User" SET role = $1, updated_at = $2 WHERE username = $3',
+    [role, updated_at, username],
+  )
+
+  // Get updated user
+  const updatedUserResult = await pool.query(
+    'SELECT * FROM "User" WHERE username = $1',
+    [username],
+  )
+  const updatedUser = updatedUserResult.rows[0]
+  const { password: userPassword, ...userWithoutPassword } = updatedUser
+
+  return res.status(200).json({
+    message: 'Role selected successfully.',
+    user: userWithoutPassword,
+  }) as Response
+})
+
+// COMPLETE CREATOR PROFILE
+export const completeCreatorProfile = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { username, displayName, bio, avatar, externalLinks } = req.body
+
+    if (!username || !displayName || !bio) {
+      return res.status(400).json({
+        message: 'Username, displayName, and bio are required.',
+      }) as Response
+    }
+
+    // Find user by username
+    const userResult = await pool.query(
+      'SELECT * FROM "User" WHERE username = $1',
+      [username],
+    )
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        message: 'User not found.',
+      }) as Response
+    }
+
+    const user = userResult.rows[0]
+
+    // Check if user is a creator
+    if (user.role !== 'creator') {
+      return res.status(400).json({
+        message: 'Only creators can complete creator profile.',
+      }) as Response
+    }
+
+    // Update creator profile
+    const updated_at = new Date()
+    const result = await pool.query(
+      `UPDATE "User"
+       SET
+         alias = $1,
+         bio = $2,
+         avatar = COALESCE($3, avatar),
+         external_link = COALESCE($4, external_link),
+         creator_profile_completed = true,
+         updated_at = $5
+       WHERE username = $6
+       RETURNING *`,
+      [
+        displayName,
+        bio,
+        avatar || null,
+        externalLinks || null,
+        updated_at,
+        username,
+      ],
+    )
+    const updatedUser = result.rows[0]
+    const { password: userPassword, ...userWithoutPassword } = updatedUser
+
+    return res.status(200).json({
+      message: 'Creator profile completed successfully.',
+      user: userWithoutPassword,
     }) as Response
   },
 )
