@@ -1,19 +1,19 @@
-import { Request, Response } from 'express'
-import asyncHandler from '../middleware/asyncHandler'
-import pool from '../../util/postgre'
-import { logger } from '../../util/logger'
-import { stripe } from '../../config/stripe'
+import { Request, Response } from "express";
+import asyncHandler from "../middleware/asyncHandler";
+import pool from "../../util/postgre";
+import { logger } from "../../util/logger";
+import { stripe } from "../../config/stripe";
 
 // Get payment review dashboard data
 export const getPaymentReviewDashboard = asyncHandler(
   async (req: Request, res: Response) => {
-    const adminId = req.user?.id
+    const adminId = req.user?.id;
 
     if (!adminId) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required',
-      })
+        message: "Authentication required",
+      });
     }
 
     try {
@@ -36,8 +36,8 @@ export const getPaymentReviewDashboard = asyncHandler(
         FROM "PaymentReviewRequest" prr
         JOIN "User" u ON prr.creator_id = u.id
         WHERE prr.status IN ('pending', 'under_review')
-        ORDER BY prr.created_at DESC`,
-      )
+        ORDER BY prr.created_at DESC`
+      );
 
       // Get pending payout requests
       const pendingPayoutsResult = await pool.query(
@@ -54,8 +54,8 @@ export const getPaymentReviewDashboard = asyncHandler(
         FROM "PayoutRequest" pr
         JOIN "User" u ON pr.creator_id = u.id
         WHERE pr.status IN ('pending', 'processing')
-        ORDER BY pr.created_at DESC`,
-      )
+        ORDER BY pr.created_at DESC`
+      );
 
       // Get open payment issues
       const openIssuesResult = await pool.query(
@@ -79,8 +79,8 @@ export const getPaymentReviewDashboard = asyncHandler(
             WHEN 'medium' THEN 3
             WHEN 'low' THEN 4
           END,
-          pi.created_at DESC`,
-      )
+          pi.created_at DESC`
+      );
 
       // Get payment statistics
       const statsResult = await pool.query(
@@ -90,8 +90,8 @@ export const getPaymentReviewDashboard = asyncHandler(
           COUNT(CASE WHEN status = 'under_review' THEN 1 END) as under_review_requests,
           SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) as total_pending_amount
         FROM "PaymentReviewRequest"
-        WHERE status IN ('pending', 'under_review')`,
-      )
+        WHERE status IN ('pending', 'under_review')`
+      );
 
       res.status(200).json({
         success: true,
@@ -101,28 +101,28 @@ export const getPaymentReviewDashboard = asyncHandler(
           openIssues: openIssuesResult.rows,
           stats: statsResult.rows[0],
         },
-      })
+      });
     } catch (error: any) {
-      logger.error('Error getting payment review dashboard:', error)
+      logger.error("Error getting payment review dashboard:", error);
       res.status(500).json({
         success: false,
-        message: 'Failed to get payment review dashboard',
-      })
+        message: "Failed to get payment review dashboard",
+      });
     }
-  },
-)
+  }
+);
 
 // Get payment review request details
 export const getPaymentReviewRequest = asyncHandler(
   async (req: Request, res: Response) => {
-    const { requestId } = req.params
-    const adminId = req.user?.id
+    const { requestId } = req.params;
+    const adminId = req.user?.id;
 
     if (!adminId) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required',
-      })
+        message: "Authentication required",
+      });
     }
 
     try {
@@ -140,74 +140,74 @@ export const getPaymentReviewRequest = asyncHandler(
         FROM "PaymentReviewRequest" prr
         JOIN "User" u ON prr.creator_id = u.id
         WHERE prr.id = $1`,
-        [requestId],
-      )
+        [requestId]
+      );
 
       if (result.rows.length === 0) {
         return res.status(404).json({
           success: false,
-          message: 'Payment review request not found',
-        })
+          message: "Payment review request not found",
+        });
       }
 
       res.status(200).json({
         success: true,
         data: result.rows[0],
-      })
+      });
     } catch (error: any) {
-      logger.error('Error getting payment review request:', error)
+      logger.error("Error getting payment review request:", error);
       res.status(500).json({
         success: false,
-        message: 'Failed to get payment review request',
-      })
+        message: "Failed to get payment review request",
+      });
     }
-  },
-)
+  }
+);
 
 // Update payment review request status
 export const updatePaymentReviewRequest = asyncHandler(
   async (req: Request, res: Response) => {
-    const { requestId } = req.params
-    const { status, admin_notes } = req.body
-    const adminId = req.user?.id
+    const { requestId } = req.params;
+    const { status, admin_notes } = req.body;
+    const adminId = req.user?.id;
 
     if (!adminId) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required',
-      })
+        message: "Authentication required",
+      });
     }
 
-    if (!status || !['approved', 'rejected', 'under_review'].includes(status)) {
+    if (!status || !["approved", "rejected", "under_review"].includes(status)) {
       return res.status(400).json({
         success: false,
-        message: 'Valid status is required',
-      })
+        message: "Valid status is required",
+      });
     }
 
     try {
       // Get the request details
       const requestResult = await pool.query(
         'SELECT * FROM "PaymentReviewRequest" WHERE id = $1',
-        [requestId],
-      )
+        [requestId]
+      );
 
       if (requestResult.rows.length === 0) {
         return res.status(404).json({
           success: false,
-          message: 'Payment review request not found',
-        })
+          message: "Payment review request not found",
+        });
       }
 
-      const request = requestResult.rows[0]
+      const request = requestResult.rows[0];
 
       // Update the request status
       await pool.query(
         `UPDATE "PaymentReviewRequest"
          SET status = $1, admin_notes = $2, admin_id = $3, reviewed_at = NOW(), updated_at = NOW()
          WHERE id = $4`,
-        [status, admin_notes, adminId, requestId],
-      )
+        [status, admin_notes, adminId, requestId]
+      );
 
       // Log the action
       await pool.query(
@@ -215,97 +215,97 @@ export const updatePaymentReviewRequest = asyncHandler(
          VALUES ($1, $2, $3, $4, $5, $6)`,
         [
           adminId,
-          'update_payment_review_request',
-          'PaymentReviewRequest',
+          "update_payment_review_request",
+          "PaymentReviewRequest",
           requestId,
           { status: request.status, admin_notes: request.admin_notes },
           { status, admin_notes },
-        ],
-      )
+        ]
+      );
 
       // Handle specific actions based on request type and status
-      if (status === 'approved') {
-        if (request.request_type === 'payout') {
+      if (status === "approved") {
+        if (request.request_type === "payout") {
           // Process payout
           await processPayout(
             request.creator_id,
             request.amount,
             request.currency,
-            adminId,
-          )
-        } else if (request.request_type === 'subscription_approval') {
+            adminId
+          );
+        } else if (request.request_type === "subscription_approval") {
           // Enable subscription features
           await pool.query(
             `UPDATE "User"
              SET subscription_enabled = true, updated_at = NOW()
              WHERE id = $1`,
-            [request.creator_id],
-          )
+            [request.creator_id]
+          );
         }
       }
 
       res.status(200).json({
         success: true,
-        message: 'Payment review request updated successfully',
-      })
+        message: "Payment review request updated successfully",
+      });
     } catch (error: any) {
-      logger.error('Error updating payment review request:', error)
+      logger.error("Error updating payment review request:", error);
       res.status(500).json({
         success: false,
-        message: 'Failed to update payment review request',
-      })
+        message: "Failed to update payment review request",
+      });
     }
-  },
-)
+  }
+);
 
 // Create payout request
 export const createPayoutRequest = asyncHandler(
   async (req: Request, res: Response) => {
-    const { amount, payment_method, payment_details } = req.body
-    const creatorId = req.user?.id
+    const { amount, payment_method, payment_details } = req.body;
+    const creatorId = req.user?.id;
 
     if (!creatorId) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required',
-      })
+        message: "Authentication required",
+      });
     }
 
     if (!amount || amount <= 0) {
       return res.status(400).json({
         success: false,
-        message: 'Valid amount is required',
-      })
+        message: "Valid amount is required",
+      });
     }
 
     try {
       // Check if creator has enough earnings
       const creatorResult = await pool.query(
         'SELECT total_earnings, minimum_payout_amount FROM "User" WHERE id = $1',
-        [creatorId],
-      )
+        [creatorId]
+      );
 
       if (creatorResult.rows.length === 0) {
         return res.status(404).json({
           success: false,
-          message: 'Creator not found',
-        })
+          message: "Creator not found",
+        });
       }
 
-      const creator = creatorResult.rows[0]
+      const creator = creatorResult.rows[0];
 
       if (amount > creator.total_earnings) {
         return res.status(400).json({
           success: false,
-          message: 'Insufficient earnings for payout',
-        })
+          message: "Insufficient earnings for payout",
+        });
       }
 
       if (amount < creator.minimum_payout_amount) {
         return res.status(400).json({
           success: false,
           message: `Minimum payout amount is $${creator.minimum_payout_amount}`,
-        })
+        });
       }
 
       // Create payout request
@@ -313,32 +313,39 @@ export const createPayoutRequest = asyncHandler(
         `INSERT INTO "PayoutRequest" (creator_id, amount, payment_method, payment_details)
          VALUES ($1, $2, $3, $4)
          RETURNING *`,
-        [creatorId, amount, payment_method, payment_details],
-      )
+        [creatorId, amount, payment_method, payment_details]
+      );
 
       res.status(201).json({
         success: true,
-        message: 'Payout request created successfully',
+        message: "Payout request created successfully",
         data: result.rows[0],
-      })
+      });
     } catch (error: any) {
-      logger.error('Error creating payout request:', error)
+      logger.error("Error creating payout request:", error);
       res.status(500).json({
         success: false,
-        message: 'Failed to create payout request',
-      })
+        message: "Failed to create payout request",
+      });
     }
-  },
-)
+  }
+);
 
 // Process payout (admin function)
 async function processPayout(
   creatorId: string,
   amount: number,
   currency: string,
-  adminId: string,
+  adminId: string
 ) {
   try {
+    // Check if Stripe is configured
+    if (!stripe) {
+      throw new Error(
+        "Stripe is not configured. Please set STRIPE_SECRET_KEY in your .env file."
+      );
+    }
+
     // Create Stripe payout
     const payout = await stripe.payouts.create({
       amount: Math.round(amount * 100), // Convert to cents
@@ -346,44 +353,44 @@ async function processPayout(
       metadata: {
         creator_id: creatorId,
         admin_id: adminId,
-        type: 'creator_payout',
+        type: "creator_payout",
       },
-    })
+    });
 
     // Update payout request status
     await pool.query(
       `UPDATE "PayoutRequest"
        SET status = 'processing', stripe_payout_id = $1, admin_id = $2, updated_at = NOW()
        WHERE creator_id = $3 AND amount = $4 AND status = 'pending'`,
-      [payout.id, adminId, creatorId, amount],
-    )
+      [payout.id, adminId, creatorId, amount]
+    );
 
     // Deduct from creator's earnings
     await pool.query(
       `UPDATE "User"
        SET total_earnings = total_earnings - $1, updated_at = NOW()
        WHERE id = $2`,
-      [amount, creatorId],
-    )
+      [amount, creatorId]
+    );
 
-    logger.info(`Payout processed: ${payout.id} for creator ${creatorId}`)
+    logger.info(`Payout processed: ${payout.id} for creator ${creatorId}`);
   } catch (error: any) {
-    logger.error('Error processing payout:', error)
-    throw new Error('Failed to process payout')
+    logger.error("Error processing payout:", error);
+    throw new Error("Failed to process payout");
   }
 }
 
 // Get payment issues
 export const getPaymentIssues = asyncHandler(
   async (req: Request, res: Response) => {
-    const { status, priority } = req.query
-    const adminId = req.user?.id
+    const { status, priority } = req.query;
+    const adminId = req.user?.id;
 
     if (!adminId) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required',
-      })
+        message: "Authentication required",
+      });
     }
 
     try {
@@ -399,20 +406,20 @@ export const getPaymentIssues = asyncHandler(
         JOIN "User" u ON pi.user_id = u.id
         LEFT JOIN "PaymentTransaction" pt ON pi.transaction_id = pt.id
         WHERE 1=1
-      `
-      const params: any[] = []
-      let paramCount = 0
+      `;
+      const params: any[] = [];
+      let paramCount = 0;
 
       if (status) {
-        paramCount++
-        query += ` AND pi.status = $${paramCount}`
-        params.push(status)
+        paramCount++;
+        query += ` AND pi.status = $${paramCount}`;
+        params.push(status);
       }
 
       if (priority) {
-        paramCount++
-        query += ` AND pi.priority = $${paramCount}`
-        params.push(priority)
+        paramCount++;
+        query += ` AND pi.priority = $${paramCount}`;
+        params.push(priority);
       }
 
       query += ` ORDER BY
@@ -422,36 +429,36 @@ export const getPaymentIssues = asyncHandler(
           WHEN 'medium' THEN 3
           WHEN 'low' THEN 4
         END,
-        pi.created_at DESC`
+        pi.created_at DESC`;
 
-      const result = await pool.query(query, params)
+      const result = await pool.query(query, params);
 
       res.status(200).json({
         success: true,
         data: result.rows,
-      })
+      });
     } catch (error: any) {
-      logger.error('Error getting payment issues:', error)
+      logger.error("Error getting payment issues:", error);
       res.status(500).json({
         success: false,
-        message: 'Failed to get payment issues',
-      })
+        message: "Failed to get payment issues",
+      });
     }
-  },
-)
+  }
+);
 
 // Update payment issue
 export const updatePaymentIssue = asyncHandler(
   async (req: Request, res: Response) => {
-    const { issueId } = req.params
-    const { status, admin_notes, resolution_notes } = req.body
-    const adminId = req.user?.id
+    const { issueId } = req.params;
+    const { status, admin_notes, resolution_notes } = req.body;
+    const adminId = req.user?.id;
 
     if (!adminId) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required',
-      })
+        message: "Authentication required",
+      });
     }
 
     try {
@@ -461,34 +468,34 @@ export const updatePaymentIssue = asyncHandler(
              resolved_at = CASE WHEN $1 = 'resolved' THEN NOW() ELSE resolved_at END,
              updated_at = NOW()
          WHERE id = $5`,
-        [status, admin_notes, resolution_notes, adminId, issueId],
-      )
+        [status, admin_notes, resolution_notes, adminId, issueId]
+      );
 
       res.status(200).json({
         success: true,
-        message: 'Payment issue updated successfully',
-      })
+        message: "Payment issue updated successfully",
+      });
     } catch (error: any) {
-      logger.error('Error updating payment issue:', error)
+      logger.error("Error updating payment issue:", error);
       res.status(500).json({
         success: false,
-        message: 'Failed to update payment issue',
-      })
+        message: "Failed to update payment issue",
+      });
     }
-  },
-)
+  }
+);
 
 // Get payment audit log
 export const getPaymentAuditLog = asyncHandler(
   async (req: Request, res: Response) => {
-    const { entity_type, entity_id, limit = 50, offset = 0 } = req.query
-    const adminId = req.user?.id
+    const { entity_type, entity_id, limit = 50, offset = 0 } = req.query;
+    const adminId = req.user?.id;
 
     if (!adminId) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required',
-      })
+        message: "Authentication required",
+      });
     }
 
     try {
@@ -500,37 +507,37 @@ export const getPaymentAuditLog = asyncHandler(
         FROM "PaymentAuditLog" pal
         JOIN "User" u ON pal.admin_id = u.id
         WHERE 1=1
-      `
-      const params: any[] = []
-      let paramCount = 0
+      `;
+      const params: any[] = [];
+      let paramCount = 0;
 
       if (entity_type) {
-        paramCount++
-        query += ` AND pal.entity_type = $${paramCount}`
-        params.push(entity_type)
+        paramCount++;
+        query += ` AND pal.entity_type = $${paramCount}`;
+        params.push(entity_type);
       }
 
       if (entity_id) {
-        paramCount++
-        query += ` AND pal.entity_id = $${paramCount}`
-        params.push(entity_id)
+        paramCount++;
+        query += ` AND pal.entity_id = $${paramCount}`;
+        params.push(entity_id);
       }
 
-      query += ` ORDER BY pal.created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`
-      params.push(limit, offset)
+      query += ` ORDER BY pal.created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
+      params.push(limit, offset);
 
-      const result = await pool.query(query, params)
+      const result = await pool.query(query, params);
 
       res.status(200).json({
         success: true,
         data: result.rows,
-      })
+      });
     } catch (error: any) {
-      logger.error('Error getting payment audit log:', error)
+      logger.error("Error getting payment audit log:", error);
       res.status(500).json({
         success: false,
-        message: 'Failed to get payment audit log',
-      })
+        message: "Failed to get payment audit log",
+      });
     }
-  },
-)
+  }
+);
