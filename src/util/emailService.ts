@@ -20,21 +20,36 @@ export class EmailService {
       console.warn('Email service is not fully configured. EMAIL_USER, EMAIL_PASSWORD, or EMAIL_HOST may be missing.')
     }
 
-    this.transporter = nodemailer.createTransport({
+    // Configure transporter with Gmail-specific settings
+    const transporterConfig: any = {
       host: config.email.host,
       port: config.email.port,
-      secure: config.email.secure,
+      secure: config.email.secure, // true for 465, false for other ports
       auth: {
         user: config.email.user,
         pass: config.email.password,
       },
-    })
+    }
+
+    // For Gmail, require TLS when using port 587
+    if (config.email.host === 'smtp.gmail.com' && config.email.port === 587) {
+      transporterConfig.requireTLS = true
+    }
+
+    this.transporter = nodemailer.createTransport(transporterConfig)
 
     // Verify connection on startup (optional, can be removed if it causes issues)
+    // This is non-blocking - app will continue even if verification fails
     this.transporter.verify().then(() => {
-      console.log('Email service is ready')
+      console.log('✅ Email service is ready')
     }).catch((error: any) => {
-      console.error('Email service verification failed:', error.message)
+      console.warn('⚠️  Email service verification failed (this is non-blocking):', error.message)
+      console.warn('   The app will continue, but emails may not send until configured correctly.')
+      console.warn('   Common issues:')
+      console.warn('   - Firewall blocking SMTP port')
+      console.warn('   - Incorrect email credentials')
+      console.warn('   - Gmail requires App Password (not regular password)')
+      console.warn('   - Network connectivity issues')
     })
   }
 
