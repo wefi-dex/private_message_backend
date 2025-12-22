@@ -35,6 +35,14 @@ interface IConfig {
   logging: {
     level: string
   }
+  email: {
+    host: string
+    port: number
+    secure: boolean
+    user: string
+    password: string
+    from: string
+  }
 }
 
 export const initConfig = (): IConfig => {
@@ -58,6 +66,12 @@ export const initConfig = (): IConfig => {
     MAX_FILE_SIZE,
     CORS_ORIGIN,
     LOG_LEVEL,
+    EMAIL_HOST,
+    EMAIL_PORT,
+    EMAIL_SECURE,
+    EMAIL_USER,
+    EMAIL_PASSWORD,
+    EMAIL_FROM,
   } = process.env
 
   const defaultConfig = {
@@ -93,6 +107,14 @@ export const initConfig = (): IConfig => {
     },
     logging: {
       level: LOG_LEVEL || 'debug',
+    },
+    email: {
+      host: EMAIL_HOST || 'smtp.gmail.com',
+      port: Number(EMAIL_PORT) || 587,
+      secure: EMAIL_SECURE === 'true' || false,
+      user: EMAIL_USER || '',
+      password: EMAIL_PASSWORD || '',
+      from: EMAIL_FROM || EMAIL_USER || 'noreply@example.com',
     },
   }
   

@@ -33,7 +33,7 @@ export class EmailService {
     // Verify connection on startup (optional, can be removed if it causes issues)
     this.transporter.verify().then(() => {
       console.log('Email service is ready')
-    }).catch((error) => {
+    }).catch((error: any) => {
       console.error('Email service verification failed:', error.message)
     })
   }
