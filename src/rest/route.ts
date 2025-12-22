@@ -1,5 +1,10 @@
 import express, { Router } from 'express'
-import { login, verifyEmail, resendVerificationCode } from './controller/auth'
+import {
+  login,
+  register,
+  verifyEmail,
+  resendVerificationCode,
+} from './controller/auth'
 import {
   createUser,
   deleteUser,
@@ -94,6 +99,7 @@ const router: Router = express.Router()
 
 // Auth routes
 router.post('/auth/login', login)
+router.post('/auth/register', register)
 router.post('/auth/verify-email', verifyEmail)
 router.post('/auth/resend-verification-code', resendVerificationCode)
 
