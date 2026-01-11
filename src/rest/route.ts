@@ -55,6 +55,7 @@ import {
   unbanUser,
   getPendingCreators,
   approveCreator,
+  createSubscriptionPlan,
 } from './controller/admin'
 import {
   getPlatformSubscriptionPlans,
@@ -138,6 +139,7 @@ router.route('/admin/users/:id/ban').post(banUser)
 router.route('/admin/users/:id/unban').post(unbanUser)
 router.route('/admin/creators/pending').get(getPendingCreators)
 router.route('/admin/creators/:id/approve').post(approveCreator)
+router.route('/admin/subscription-plans').post(createSubscriptionPlan)
 router.route('/reports').get(getAllReports)
 router
   .route('/report/:id')
@@ -166,6 +168,7 @@ router.route('/files/bulk-delete').post(bulkDeleteFiles)
 
 // Payment and Subscription routes
 router.route('/platform/subscription-plans').get(getPlatformSubscriptionPlans)
+router.route('/subscription-plans').get(getPlatformSubscriptionPlans) // Alias for frontend compatibility
 router
   .route('/platform/subscription')
   .get(getCreatorPlatformSubscription)

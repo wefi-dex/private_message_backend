@@ -634,3 +634,63 @@ export const approveCreator = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
+
+// Create subscription plan (Admin only)
+export const createSubscriptionPlan = async (req: Request, res: Response) => {
+  try {
+    const { name, description, price, currency = 'USD', duration_days, features, is_active = true } = req.body;
+
+    // Validate required fields
+    if (!name || !price || !duration_days) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, price, and duration_days are required',
+      });
+    }
+
+    // Validate price is positive
+    if (price <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Price must be greater than 0',
+      });
+    }
+
+    // Validate duration_days is positive
+    if (duration_days <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Duration days must be greater than 0',
+      });
+    }
+
+    // Insert new subscription plan
+    const result = await pool.query(
+      `INSERT INTO "PlatformSubscriptionPlan" 
+       (name, description, price, currency, duration_days, features, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [
+        name,
+        description || null,
+        price,
+        currency,
+        duration_days,
+        features ? JSON.stringify(features) : null,
+        is_active,
+      ]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Subscription plan created successfully',
+      data: result.rows[0],
+    });
+  } catch (error: any) {
+    logger.error('Error creating subscription plan:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to create subscription plan',
+    });
+  }
+};
