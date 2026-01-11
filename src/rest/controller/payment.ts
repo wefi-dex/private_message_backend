@@ -33,9 +33,15 @@ const debugLog = (data: any) => {
 export const getPlatformSubscriptionPlans = asyncHandler(
   async (req: Request, res: Response) => {
     try {
+      // Use DISTINCT ON (name) to get only one plan per name (keeps the most recent one)
+      // This prevents duplicate plans with the same name but different IDs
       const result = await pool.query(
-        'SELECT * FROM "PlatformSubscriptionPlan" WHERE is_active = true ORDER BY price ASC'
+        `SELECT DISTINCT ON (name) *
+         FROM "PlatformSubscriptionPlan" 
+         WHERE is_active = true 
+         ORDER BY name, created_at DESC, price ASC`
       );
+      
       res.status(200).json({
         success: true,
         data: result.rows,

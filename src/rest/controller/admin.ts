@@ -664,6 +664,19 @@ export const createSubscriptionPlan = async (req: Request, res: Response) => {
       });
     }
 
+    // Check if a plan with the same name already exists
+    const existingPlan = await pool.query(
+      'SELECT id FROM "PlatformSubscriptionPlan" WHERE LOWER(name) = LOWER($1) AND is_active = true',
+      [name]
+    );
+
+    if (existingPlan.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `A subscription plan with the name "${name}" already exists. Please use a different name or update the existing plan.`,
+      });
+    }
+
     // Insert new subscription plan
     const result = await pool.query(
       `INSERT INTO "PlatformSubscriptionPlan" 
@@ -691,6 +704,235 @@ export const createSubscriptionPlan = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to create subscription plan',
+    });
+  }
+};
+
+// Update subscription plan (Admin only)
+export const updateSubscriptionPlan = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, description, price, currency, duration_days, features, is_active } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Plan ID is required',
+      });
+    }
+
+    // Check if plan exists
+    const planCheck = await pool.query(
+      'SELECT * FROM "PlatformSubscriptionPlan" WHERE id = $1',
+      [id]
+    );
+
+    if (planCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Subscription plan not found',
+      });
+    }
+
+    // Build update query dynamically based on provided fields
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (name !== undefined) {
+      updates.push(`name = $${paramIndex++}`);
+      values.push(name);
+    }
+    if (description !== undefined) {
+      updates.push(`description = $${paramIndex++}`);
+      values.push(description);
+    }
+    if (price !== undefined) {
+      if (price <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Price must be greater than 0',
+        });
+      }
+      updates.push(`price = $${paramIndex++}`);
+      values.push(price);
+    }
+    if (currency !== undefined) {
+      updates.push(`currency = $${paramIndex++}`);
+      values.push(currency);
+    }
+    if (duration_days !== undefined) {
+      if (duration_days <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Duration days must be greater than 0',
+        });
+      }
+      updates.push(`duration_days = $${paramIndex++}`);
+      values.push(duration_days);
+    }
+    if (features !== undefined) {
+      updates.push(`features = $${paramIndex++}`);
+      values.push(features ? JSON.stringify(features) : null);
+    }
+    if (is_active !== undefined) {
+      updates.push(`is_active = $${paramIndex++}`);
+      values.push(is_active);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No fields to update',
+      });
+    }
+
+    // Add updated_at timestamp
+    updates.push(`updated_at = NOW()`);
+    // Add plan ID as last parameter
+    values.push(id);
+
+    const updateQuery = `
+      UPDATE "PlatformSubscriptionPlan"
+      SET ${updates.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING *
+    `;
+
+    const result = await pool.query(updateQuery, values);
+
+    res.status(200).json({
+      success: true,
+      message: 'Subscription plan updated successfully',
+      data: result.rows[0],
+    });
+  } catch (error: any) {
+    logger.error('Error updating subscription plan:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update subscription plan',
+    });
+  }
+};
+
+// Clean up duplicate subscription plans (Admin only)
+// Keeps the most recent plan for each name and deactivates/deletes older duplicates
+export const cleanupDuplicateSubscriptionPlans = async (req: Request, res: Response) => {
+  try {
+    // Find duplicate plans by name
+    const duplicates = await pool.query(
+      `SELECT name, COUNT(*) as count, array_agg(id ORDER BY created_at DESC) as ids
+       FROM "PlatformSubscriptionPlan"
+       WHERE is_active = true
+       GROUP BY name
+       HAVING COUNT(*) > 1`
+    );
+
+    if (duplicates.rows.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'No duplicate plans found',
+        data: { cleaned: 0 },
+      });
+    }
+
+    let cleanedCount = 0;
+    const cleanedPlans: string[] = [];
+
+    // For each duplicate name, keep the first (most recent) and deactivate the rest
+    for (const duplicate of duplicates.rows) {
+      const ids = duplicate.ids;
+      const keepId = ids[0]; // Keep the most recent one
+      const removeIds = ids.slice(1); // Remove the older ones
+
+      // Deactivate older duplicates
+      for (const removeId of removeIds) {
+        await pool.query(
+          `UPDATE "PlatformSubscriptionPlan" 
+           SET is_active = false, updated_at = NOW()
+           WHERE id = $1`,
+          [removeId]
+        );
+        cleanedCount++;
+        cleanedPlans.push(removeId);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Cleaned up ${cleanedCount} duplicate subscription plan(s)`,
+      data: {
+        cleaned: cleanedCount,
+        deactivatedPlanIds: cleanedPlans,
+        duplicatesFound: duplicates.rows.length,
+      },
+    });
+  } catch (error: any) {
+    logger.error('Error cleaning up duplicate subscription plans:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to clean up duplicate plans',
+    });
+  }
+};
+
+// Delete subscription plan (Admin only)
+export const deleteSubscriptionPlan = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Plan ID is required',
+      });
+    }
+
+    // Check if plan exists
+    const planCheck = await pool.query(
+      'SELECT * FROM "PlatformSubscriptionPlan" WHERE id = $1',
+      [id]
+    );
+
+    if (planCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Subscription plan not found',
+      });
+    }
+
+    // Check if plan has active subscriptions
+    const activeSubscriptions = await pool.query(
+      `SELECT COUNT(*) as count 
+       FROM "CreatorPlatformSubscription" 
+       WHERE plan_id = $1 AND status IN ('active', 'trial')`,
+      [id]
+    );
+
+    const subscriptionCount = parseInt(activeSubscriptions.rows[0].count);
+
+    if (subscriptionCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete plan with ${subscriptionCount} active subscription(s). Please deactivate the plan instead or wait for subscriptions to expire.`,
+      });
+    }
+
+    // Delete the plan
+    await pool.query(
+      'DELETE FROM "PlatformSubscriptionPlan" WHERE id = $1',
+      [id]
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Subscription plan deleted successfully',
+    });
+  } catch (error: any) {
+    logger.error('Error deleting subscription plan:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to delete subscription plan',
     });
   }
 };

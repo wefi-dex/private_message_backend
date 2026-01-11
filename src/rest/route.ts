@@ -56,6 +56,9 @@ import {
   getPendingCreators,
   approveCreator,
   createSubscriptionPlan,
+  updateSubscriptionPlan,
+  deleteSubscriptionPlan,
+  cleanupDuplicateSubscriptionPlans,
 } from './controller/admin'
 import {
   getPlatformSubscriptionPlans,
@@ -139,7 +142,13 @@ router.route('/admin/users/:id/ban').post(banUser)
 router.route('/admin/users/:id/unban').post(unbanUser)
 router.route('/admin/creators/pending').get(getPendingCreators)
 router.route('/admin/creators/:id/approve').post(approveCreator)
-router.route('/admin/subscription-plans').post(createSubscriptionPlan)
+router.route('/admin/subscription-plans')
+  .post(createSubscriptionPlan)
+router.route('/admin/subscription-plans/cleanup-duplicates')
+  .post(cleanupDuplicateSubscriptionPlans)
+router.route('/admin/subscription-plans/:id')
+  .put(updateSubscriptionPlan)
+  .delete(deleteSubscriptionPlan)
 router.route('/reports').get(getAllReports)
 router
   .route('/report/:id')
