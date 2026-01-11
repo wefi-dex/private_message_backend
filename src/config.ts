@@ -103,7 +103,7 @@ export const initConfig = (): IConfig => {
       maxSize: Number(MAX_FILE_SIZE) || 5242880, // 5MB default
     },
     cors: {
-      origin: CORS_ORIGIN || 'http://localhost:3000,http://localhost:19006,http://*:3000,http://*:19006',
+      origin: CORS_ORIGIN || 'http://localhost:3000,http://localhost:19006,https://private-messenger-admin.onrender.com',
     },
     logging: {
       level: LOG_LEVEL || 'debug',

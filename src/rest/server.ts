@@ -17,9 +17,11 @@ export class REST {
       next();
     });
 
+    // CORS configuration - Allow all origins (for development/production flexibility)
+    // WARNING: In production, consider restricting to specific domains for security
     this.app.use(
       cors({
-        origin: config.cors.origin.split(",").map((origin) => origin.trim()),
+        origin: true, // Allow all origins
         credentials: true,
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
         allowedHeaders: [
@@ -32,7 +34,9 @@ export class REST {
           "X-File-Name",
         ],
         exposedHeaders: ["Content-Disposition"],
-      })
+        preflightContinue: false,
+        optionsSuccessStatus: 204,
+      }) as unknown as express.RequestHandler
     );
     this.app.use(helmet());
     this.app.use(express.json({ limit: "10mb" }));
@@ -67,19 +71,19 @@ export class REST {
 
         const { stream } = fileService.createFileStream(filename);
 
-        res.setHeader(
+        res.header(
           "Content-Type",
           fileInfo.mimeType || "application/octet-stream"
         );
-        res.setHeader(
+        res.header(
           "Content-Disposition",
           `inline; filename="${fileInfo.filename}"`
         );
-        res.setHeader("Content-Length", fileInfo.size);
+        res.header("Content-Length", fileInfo.size.toString());
 
         stream.pipe(res);
 
-        stream.on("error", (error) => {
+        stream.on("error", (error: Error) => {
           console.error("File stream error:", error);
           if (!res.headersSent) {
             res
