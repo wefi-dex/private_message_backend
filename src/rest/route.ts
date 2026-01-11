@@ -59,6 +59,7 @@ import {
   updateSubscriptionPlan,
   deleteSubscriptionPlan,
   cleanupDuplicateSubscriptionPlans,
+  getAllSubscriptions,
 } from './controller/admin'
 import {
   getPlatformSubscriptionPlans,
@@ -149,6 +150,8 @@ router.route('/admin/subscription-plans/cleanup-duplicates')
 router.route('/admin/subscription-plans/:id')
   .put(updateSubscriptionPlan)
   .delete(deleteSubscriptionPlan)
+router.route('/admin/subscriptions')
+  .get(getAllSubscriptions)
 router.route('/reports').get(getAllReports)
 router
   .route('/report/:id')

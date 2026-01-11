@@ -936,3 +936,73 @@ export const deleteSubscriptionPlan = async (req: Request, res: Response) => {
     });
   }
 };
+
+// Get all subscriptions (Admin only)
+export const getAllSubscriptions = async (req: Request, res: Response) => {
+  try {
+    const { status, creator_id, plan_id } = req.query;
+
+    // Build query with optional filters
+    let query = `
+      SELECT 
+        cps.id,
+        cps.creator_id,
+        cps.plan_id,
+        cps.status,
+        cps.start_date,
+        cps.end_date,
+        cps.auto_renew,
+        cps.payment_method,
+        cps.external_payment_id,
+        cps.created_at,
+        cps.updated_at,
+        psp.name as plan_name,
+        psp.price as plan_price,
+        psp.description as plan_description,
+        psp.duration_days,
+        u.username as creator_username,
+        u.email as creator_email,
+        u.alias as creator_alias,
+        u.avatar as creator_avatar
+      FROM "CreatorPlatformSubscription" cps
+      JOIN "PlatformSubscriptionPlan" psp ON cps.plan_id = psp.id
+      JOIN "User" u ON cps.creator_id = u.id
+      WHERE 1=1
+    `;
+
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    // Add filters
+    if (status) {
+      query += ` AND cps.status = $${paramIndex++}`;
+      params.push(status);
+    }
+
+    if (creator_id) {
+      query += ` AND cps.creator_id = $${paramIndex++}`;
+      params.push(creator_id);
+    }
+
+    if (plan_id) {
+      query += ` AND cps.plan_id = $${paramIndex++}`;
+      params.push(plan_id);
+    }
+
+    query += ` ORDER BY cps.created_at DESC`;
+
+    const result = await pool.query(query, params);
+
+    res.status(200).json({
+      success: true,
+      data: result.rows,
+      count: result.rows.length,
+    });
+  } catch (error: any) {
+    logger.error('Error getting all subscriptions:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get subscriptions',
+    });
+  }
+};
