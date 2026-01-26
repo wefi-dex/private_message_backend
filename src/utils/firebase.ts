@@ -1,6 +1,5 @@
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getDatabase } from 'firebase-admin/database';
-import { getAuth } from 'firebase-admin/auth';
 import { config } from '../config';
 
 // Initialize Firebase Admin SDK
@@ -24,6 +23,5 @@ const app = initializeApp({
 });
 
 const db = getDatabase(app);
-const auth = getAuth(app);
 
-export { db, auth }; 
+export { db }; 

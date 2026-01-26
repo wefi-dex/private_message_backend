@@ -14,9 +14,8 @@ const userAuthMiddleware = async (
   )
 
   // Allow unauthenticated access to authentication endpoints, public file downloads, subscription plans, and admin endpoints
-  // Note: /auth/firebase-token requires authentication, so it's excluded from public paths
   const publicPaths = [
-    req.path.startsWith('/auth') && !req.path.includes('/auth/firebase-token'), // All auth endpoints except firebase-token
+    req.path.startsWith('/auth'),
     req.path === '/user' && req.method === 'POST',
     req.path === '/check-username' && req.method === 'GET',
     req.path === '/by-username' && req.method === 'GET', // Allow public username lookup for invite codes
