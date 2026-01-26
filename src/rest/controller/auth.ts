@@ -13,7 +13,7 @@ import {
 } from '../../util/verificationUtils'
 import { EmailService } from '../../util/emailService'
 import { v4 as uuidv4 } from 'uuid'
-import { auth } from '../../util/firebase'
+import { auth } from '../../utils/firebase'
 
 export const login = asyncHandler(async (req: Request, res: Response) => {
   const { username, email, password } = req.body
