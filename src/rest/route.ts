@@ -6,6 +6,9 @@ import {
   resendVerificationCode,
   selectRole,
   completeCreatorProfile,
+  requestPasswordReset,
+  verifyPasswordResetCode,
+  resetPassword,
 } from './controller/auth'
 import {
   createUser,
@@ -111,6 +114,9 @@ router.post('/auth/verify-email', verifyEmail)
 router.post('/auth/resend-verification-code', resendVerificationCode)
 router.post('/auth/select-role', selectRole)
 router.post('/auth/complete-creator-profile', completeCreatorProfile)
+router.post('/auth/forgot-password', requestPasswordReset)
+router.post('/auth/verify-reset-code', verifyPasswordResetCode)
+router.post('/auth/reset-password', resetPassword)
 
 router.route('/user').post(createUser)
 router.route('/user/:id').get(getUser).put(updateUser).delete(deleteUser)

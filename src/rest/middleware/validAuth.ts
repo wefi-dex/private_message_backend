@@ -18,6 +18,7 @@ const userAuthMiddleware = async (
     req.path.startsWith('/auth'),
     req.path === '/user' && req.method === 'POST',
     req.path === '/check-username' && req.method === 'GET',
+    req.path === '/by-username' && req.method === 'GET', // Allow public username lookup for invite codes
     req.path.startsWith('/files'), // Public file downloads only
     req.path.startsWith('/file/upload'), // Allow image/file uploads during onboarding
     req.path === '/subscription-plans', // Public subscription plans
