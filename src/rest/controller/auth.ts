@@ -15,16 +15,19 @@ import { EmailService } from '../../util/emailService'
 import { v4 as uuidv4 } from 'uuid'
 
 export const login = asyncHandler(async (req: Request, res: Response) => {
-  const { username, password } = req.body
-  if (!username || !password) {
+  const { username, email, password } = req.body
+  const identifier = username || email
+  
+  if (!identifier || !password) {
     return res
       .status(400)
       .json({ message: 'Username and password are required.' }) as Response
   }
 
+  // Try to find user by username or email
   const userResult = await pool.query(
-    'SELECT * FROM "User" WHERE username = $1',
-    [username],
+    'SELECT * FROM "User" WHERE username = $1 OR email = $1',
+    [identifier],
   )
   if (userResult.rows.length === 0) {
     return res
