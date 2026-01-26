@@ -9,6 +9,7 @@ import {
   requestPasswordReset,
   verifyPasswordResetCode,
   resetPassword,
+  getFirebaseToken,
 } from './controller/auth'
 import {
   createUser,
@@ -117,6 +118,8 @@ router.post('/auth/complete-creator-profile', completeCreatorProfile)
 router.post('/auth/forgot-password', requestPasswordReset)
 router.post('/auth/verify-reset-code', verifyPasswordResetCode)
 router.post('/auth/reset-password', resetPassword)
+// Firebase custom token endpoint (requires authentication)
+router.get('/auth/firebase-token', getFirebaseToken)
 
 router.route('/user').post(createUser)
 router.route('/user/:id').get(getUser).put(updateUser).delete(deleteUser)

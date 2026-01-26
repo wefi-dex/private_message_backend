@@ -13,6 +13,7 @@ import {
 } from '../../util/verificationUtils'
 import { EmailService } from '../../util/emailService'
 import { v4 as uuidv4 } from 'uuid'
+import { auth } from '../../util/firebase'
 
 export const login = asyncHandler(async (req: Request, res: Response) => {
   const { username, email, password } = req.body
@@ -600,4 +601,38 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
   return res.status(200).json({
     message: 'Password reset successfully.',
   }) as Response
+})
+
+// GET FIREBASE CUSTOM TOKEN
+// This endpoint generates a Firebase custom token for authenticated users
+// The frontend will use this token to sign in to Firebase
+export const getFirebaseToken = asyncHandler(async (req: Request, res: Response) => {
+  // Get user ID from JWT token (set by validAuth middleware)
+  const userId = (req.user as { id?: string })?.id
+
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required.',
+    }) as Response
+  }
+
+  try {
+    // Create a custom token for Firebase Authentication
+    // Use the user's ID as the UID
+    const customToken = await auth.createCustomToken(userId, {
+      userId: userId,
+    })
+
+    return res.status(200).json({
+      success: true,
+      firebaseToken: customToken,
+    }) as Response
+  } catch (error) {
+    console.error('Error creating Firebase custom token:', error)
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to generate Firebase token.',
+    }) as Response
+  }
 })

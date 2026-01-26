@@ -128,20 +128,24 @@ export const checkUsernameDuplicate = asyncHandler(async (req: Request, res: Res
 
 // CREATE USER CONNECTION
 export const createUserConnection = asyncHandler(async (req: Request, res: Response) => {
-  const { user_id, target_user_id } = req.body;
+  const { user_id, target_user_id, status } = req.body;
   if (!user_id || !target_user_id) {
     return res.status(400).json({ success: false, message: 'user_id and target_user_id are required.' });
   }
   if (user_id === target_user_id) {
     return res.status(400).json({ success: false, message: 'Cannot connect to yourself.' });
   }
+  
+  // Use provided status or default to 'pending'
+  const connectionStatus = status === 'accepted' ? 'accepted' : 'pending';
+  
   try {
     const result = await pool.query(
-      `INSERT INTO "UserConnection" (user_id, target_user_id, status) VALUES ($1, $2, 'pending') ON CONFLICT (user_id, target_user_id) DO NOTHING RETURNING id`,
-      [user_id, target_user_id]
+      `INSERT INTO "UserConnection" (user_id, target_user_id, status) VALUES ($1, $2, $3) ON CONFLICT (user_id, target_user_id) DO UPDATE SET status = $3 RETURNING id`,
+      [user_id, target_user_id, connectionStatus]
     );
     
-    // If a new connection was created, trigger Firebase update
+    // If a new connection was created or updated, trigger Firebase update
     if (result.rows.length > 0) {
       try {
         const { db } = await import('../../utils/firebase');
@@ -149,7 +153,8 @@ export const createUserConnection = asyncHandler(async (req: Request, res: Respo
         await connectionRequestsRef.set({
           timestamp: Date.now(),
           from: user_id,
-          connectionId: result.rows[0].id
+          connectionId: result.rows[0].id,
+          status: connectionStatus
         });
       } catch (firebaseError) {
         console.error('Firebase update failed:', firebaseError);
@@ -157,7 +162,10 @@ export const createUserConnection = asyncHandler(async (req: Request, res: Respo
       }
     }
     
-    return res.status(200).json({ success: true, message: 'Connection request sent.' });
+    const message = connectionStatus === 'accepted' 
+      ? 'Connection created successfully.' 
+      : 'Connection request sent.';
+    return res.status(200).json({ success: true, message });
   } catch (error) {
     console.error('Error while creating user connection:', error);
     return res.status(400).json({ success: false, message: 'Error while creating connection.', error });

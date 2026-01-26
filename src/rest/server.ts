@@ -71,6 +71,10 @@ export class REST {
 
         const { stream } = fileService.createFileStream(filename);
 
+        // Set CORS headers for image/file access
+        res.header("Access-Control-Allow-Origin", "*");
+        res.header("Access-Control-Allow-Methods", "GET, OPTIONS");
+        res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
         res.header(
           "Content-Type",
           fileInfo.mimeType || "application/octet-stream"
