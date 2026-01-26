@@ -2,14 +2,26 @@ import Stripe from "stripe";
 import fs from "fs";
 import path from "path";
 
-// Debug logging helper
+// Debug logging helper - only log to console in production to prevent file growth
 const debugLog = (data: any) => {
   try {
-    // Use absolute path to workspace root
-    const logPath = "/Volumes/Work/g-10/.cursor/debug.log";
-    const logEntry = JSON.stringify({ ...data, timestamp: Date.now() }) + "\n";
-    fs.appendFileSync(logPath, logEntry, "utf8");
-    // Also log to console for immediate visibility
+    // Only log to file in development
+    if (process.env.NODE_ENV === 'development') {
+      const logPath = "/Volumes/Work/g-10/.cursor/debug.log";
+      // Limit log file size - if file is too large, skip writing
+      try {
+        const stats = fs.statSync(logPath);
+        if (stats.size < 10 * 1024 * 1024) { // Only write if file is less than 10MB
+          const logEntry = JSON.stringify({ ...data, timestamp: Date.now() }) + "\n";
+          fs.appendFileSync(logPath, logEntry, "utf8");
+        }
+      } catch {
+        // File doesn't exist or can't be accessed, create it
+        const logEntry = JSON.stringify({ ...data, timestamp: Date.now() }) + "\n";
+        fs.appendFileSync(logPath, logEntry, "utf8");
+      }
+    }
+    // Always log to console for immediate visibility
     console.log(`[DEBUG] ${data.location}: ${data.message}`, data.data || {});
   } catch (e) {
     // Log to console if file logging fails
