@@ -262,9 +262,6 @@ export const createPost = asyncHandler(async (req: Request, res: Response) => {
     }
   } catch (error: any) {
     // If platform subscription tables don't exist yet, allow posting (for development)
-    console.log(
-      'Platform subscription check skipped - tables may not exist yet',
-    )
   }
 
   try {

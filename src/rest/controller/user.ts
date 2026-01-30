@@ -36,7 +36,6 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
     );
     return res.status(200).json({success: true, message: 'User is successfully created.', id, role, alias: body.alias}) as Response;
   } catch (error) {
-    console.error('Error while creating user:', error);
     return res.status(400).json({success: false, message: 'Error while creating user.', error}) as Response;
   }
 });
@@ -121,7 +120,6 @@ export const checkUsernameDuplicate = asyncHandler(async (req: Request, res: Res
     const result = await pool.query('SELECT id FROM "User" WHERE username = $1', [username]);
     return res.json({ available: result.rows.length === 0 });
   } catch (err) {
-    console.error('DB error in checkUsernameDuplicate:', err);
     return res.status(500).json({ available: false, message: 'Database error', error: err });
   }
 }); 
@@ -157,7 +155,6 @@ export const createUserConnection = asyncHandler(async (req: Request, res: Respo
           status: connectionStatus
         });
       } catch (firebaseError) {
-        console.error('Firebase update failed:', firebaseError);
         // Don't fail the request if Firebase update fails
       }
     }
@@ -167,7 +164,6 @@ export const createUserConnection = asyncHandler(async (req: Request, res: Respo
       : 'Connection request sent.';
     return res.status(200).json({ success: true, message });
   } catch (error) {
-    console.error('Error while creating user connection:', error);
     return res.status(400).json({ success: false, message: 'Error while creating connection.', error });
   }
 }); 
@@ -301,7 +297,6 @@ export const respondToConnectionRequest = asyncHandler(async (req: Request, res:
         to: target_user_id
       });
     } catch (firebaseError) {
-      console.error('Firebase update failed:', firebaseError);
       // Don't fail the request if Firebase update fails
     }
     

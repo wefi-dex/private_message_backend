@@ -23,8 +23,6 @@ async function runMigration() {
     // Execute the migration
     await pool.query(sql)
   } catch (error) {
-    console.error('❌ Migration failed:', error.message)
-
     // If tables already exist, that's okay
     if (error.message.includes('already exists')) {
       return
@@ -41,7 +39,6 @@ runMigration()
   .then(() => {
     process.exit(0)
   })
-  .catch((error) => {
-    console.error('Migration process failed:', error)
+  .catch(() => {
     process.exit(1)
   })

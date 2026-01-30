@@ -87,8 +87,7 @@ export class REST {
 
         stream.pipe(res);
 
-        stream.on("error", (error: Error) => {
-          console.error("File stream error:", error);
+        stream.on("error", () => {
           if (!res.headersSent) {
             res
               .status(500)
@@ -96,7 +95,6 @@ export class REST {
           }
         });
       } catch (error) {
-        console.error("Error serving file:", error);
         res
           .status(500)
           .json({ success: false, message: "Error serving file." });
@@ -113,12 +111,6 @@ export class REST {
     // Global error handler - must be after all routes
     this.app.use(
       (err: any, req: Request, res: Response, next: NextFunction) => {
-        console.error("[GLOBAL ERROR HANDLER]", {
-          message: err.message,
-          stack: err.stack,
-          path: req.path,
-          method: req.method,
-        });
         logger.error("Unhandled error:", err);
 
         // Don't send response if headers already sent
@@ -156,7 +148,6 @@ export class REST {
             users: result.rows,
           });
         } catch (error) {
-          console.error("Debug endpoint error:", error);
           res.status(500).json({ success: false, message: "Database error" });
         }
       });

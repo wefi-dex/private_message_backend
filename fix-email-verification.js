@@ -42,11 +42,7 @@ async function runEmailVerificationMigration() {
         ORDER BY column_name
       `)
 
-      result.rows.forEach((row) => {
-        console.log(
-          `  - ${row.column_name}: ${row.data_type} (nullable: ${row.is_nullable})`,
-        )
-      })
+      result.rows.forEach(() => {})
     } catch (error) {
       await client.query('ROLLBACK')
       throw error
@@ -54,7 +50,6 @@ async function runEmailVerificationMigration() {
       client.release()
     }
   } catch (error) {
-    console.error('❌ Migration failed:', error.message)
     process.exit(1)
   } finally {
     await pool.end()

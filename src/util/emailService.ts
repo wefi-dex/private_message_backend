@@ -17,7 +17,7 @@ export class EmailService {
     this.isConfigured = !!(config.email.user && config.email.password && config.email.host)
 
     if (!this.isConfigured) {
-      console.warn('Email service is not fully configured. EMAIL_USER, EMAIL_PASSWORD, or EMAIL_HOST may be missing.')
+      // Email not fully configured
     }
 
     // Configure transporter with Gmail-specific settings
@@ -40,31 +40,19 @@ export class EmailService {
 
     // Verify connection on startup (optional, can be removed if it causes issues)
     // This is non-blocking - app will continue even if verification fails
-    this.transporter.verify().then(() => {
-      console.log('✅ Email service is ready')
-    }).catch((error: any) => {
-      console.warn('⚠️  Email service verification failed (this is non-blocking):', error.message)
-      console.warn('   The app will continue, but emails may not send until configured correctly.')
-      console.warn('   Common issues:')
-      console.warn('   - Firewall blocking SMTP port')
-      console.warn('   - Incorrect email credentials')
-      console.warn('   - Gmail requires App Password (not regular password)')
-      console.warn('   - Network connectivity issues')
-    })
+    this.transporter.verify().then(() => {}).catch(() => {})
   }
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
     try {
       // Check if email is configured
       if (!this.isConfigured) {
-        console.error('Email service is not configured. Please set EMAIL_USER, EMAIL_PASSWORD, and EMAIL_HOST environment variables.')
         return false
       }
 
       // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(options.to)) {
-        console.error('Invalid email format:', options.to)
         return false
       }
 
@@ -76,22 +64,9 @@ export class EmailService {
         text: options.text,
       }
 
-      const info = await this.transporter.sendMail(mailOptions)
-      console.log('Email sent successfully:', {
-        to: options.to,
-        messageId: info.messageId,
-        response: info.response,
-      })
+      await this.transporter.sendMail(mailOptions)
       return true
     } catch (error: any) {
-      console.error('Email sending failed:', {
-        to: options.to,
-        error: error.message,
-        code: error.code,
-        command: error.command,
-        response: error.response,
-        responseCode: error.responseCode,
-      })
       return false
     }
   }

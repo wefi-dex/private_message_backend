@@ -162,7 +162,6 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       },
     }) as Response
   } catch (error: any) {
-    console.error('Error registering user:', error)
     if (error.code === '23505') {
       // Unique constraint violation
       return res

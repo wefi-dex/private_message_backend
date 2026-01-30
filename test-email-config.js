@@ -14,7 +14,6 @@ async function testEmailConfig() {
   }
 
   if (!emailConfig.user || !emailConfig.password) {
-    console.log('\n❌ Email configuration incomplete!')
     return
   }
 
@@ -54,7 +53,6 @@ async function testEmailConfig() {
 
     const info = await transporter.sendMail(testEmail)
   } catch (error) {
-    console.error('❌ Email test failed:', error.message)
   }
 }
 

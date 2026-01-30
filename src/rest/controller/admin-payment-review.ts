@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import asyncHandler from "../middleware/asyncHandler";
 import pool from "../../util/postgre";
 import { logger } from "../../util/logger";
-import { stripe } from "../../config/stripe";
+import { randomUUID } from "crypto";
 
 // Get payment review dashboard data
 export const getPaymentReviewDashboard = asyncHandler(
@@ -331,7 +331,7 @@ export const createPayoutRequest = asyncHandler(
   }
 );
 
-// Process payout (admin function)
+// Process payout (admin function) – records payout for manual processing (no external payment provider)
 async function processPayout(
   creatorId: string,
   amount: number,
@@ -339,30 +339,14 @@ async function processPayout(
   adminId: string
 ) {
   try {
-    // Check if Stripe is configured
-    if (!stripe) {
-      throw new Error(
-        "Stripe is not configured. Please set STRIPE_SECRET_KEY in your .env file."
-      );
-    }
+    const payoutReferenceId = `payout_${randomUUID()}`;
 
-    // Create Stripe payout
-    const payout = await stripe.payouts.create({
-      amount: Math.round(amount * 100), // Convert to cents
-      currency: currency.toLowerCase(),
-      metadata: {
-        creator_id: creatorId,
-        admin_id: adminId,
-        type: "creator_payout",
-      },
-    });
-
-    // Update payout request status
+    // Update payout request status (stripe_payout_id column stores payout reference for tracking)
     await pool.query(
       `UPDATE "PayoutRequest"
        SET status = 'processing', stripe_payout_id = $1, admin_id = $2, updated_at = NOW()
        WHERE creator_id = $3 AND amount = $4 AND status = 'pending'`,
-      [payout.id, adminId, creatorId, amount]
+      [payoutReferenceId, adminId, creatorId, amount]
     );
 
     // Deduct from creator's earnings
@@ -373,7 +357,7 @@ async function processPayout(
       [amount, creatorId]
     );
 
-    logger.info(`Payout processed: ${payout.id} for creator ${creatorId}`);
+    logger.info(`Payout recorded: ${payoutReferenceId} for creator ${creatorId} (manual processing)`);
   } catch (error: any) {
     logger.error("Error processing payout:", error);
     throw new Error("Failed to process payout");

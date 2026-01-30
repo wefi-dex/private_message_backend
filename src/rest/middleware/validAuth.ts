@@ -8,7 +8,7 @@ const userAuthMiddleware = async (
   next: NextFunction,
 ) => {
   // Payment endpoints require authentication - verify token first
-  const paymentEndpoints = ['/payment/create-intent', '/subscription/upgrade']
+  const paymentEndpoints = ['/subscription/apple-verify']
   const isPaymentEndpoint = paymentEndpoints.some((endpoint) =>
     req.path.includes(endpoint),
   )
@@ -22,6 +22,7 @@ const userAuthMiddleware = async (
     req.path.startsWith('/files'), // Public file downloads only
     req.path.startsWith('/file/upload'), // Allow image/file uploads during onboarding
     req.path === '/subscription-plans', // Public subscription plans
+    req.path === '/membership-plans', // Public membership plans (Apple IAP)
     req.path.startsWith('/admin'), // Admin endpoints (for simplified admin panel)
     req.path.startsWith('/analytics'), // Analytics endpoints (for simplified admin panel)
     req.path.startsWith('/reports'), // Reports endpoints (for simplified admin panel)

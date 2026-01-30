@@ -63,16 +63,20 @@ import {
   deleteSubscriptionPlan,
   cleanupDuplicateSubscriptionPlans,
   getAllSubscriptions,
+  getAllMembershipPlans,
+  createMembershipPlan,
+  updateMembershipPlan,
+  deleteMembershipPlan,
 } from './controller/admin'
 import {
   getPlatformSubscriptionPlans,
+  getMembershipPlans,
   getCreatorPlatformSubscription,
   createPlatformSubscription,
   cancelPlatformSubscription,
   checkCreatorPostingPermission,
   startFreeTrial,
-  createPaymentIntentEndpoint,
-  upgradeMembershipSubscription,
+  verifyAppleIAPAndUpgradeMembership,
 } from './controller/payment'
 import {
   getPaymentReviewDashboard,
@@ -158,6 +162,12 @@ router.route('/admin/subscription-plans/:id')
   .delete(deleteSubscriptionPlan)
 router.route('/admin/subscriptions')
   .get(getAllSubscriptions)
+router.route('/admin/membership-plans')
+  .get(getAllMembershipPlans)
+  .post(createMembershipPlan)
+router.route('/admin/membership-plans/:id')
+  .put(updateMembershipPlan)
+  .delete(deleteMembershipPlan)
 router.route('/reports').get(getAllReports)
 router
   .route('/report/:id')
@@ -187,6 +197,7 @@ router.route('/files/bulk-delete').post(bulkDeleteFiles)
 // Payment and Subscription routes
 router.route('/platform/subscription-plans').get(getPlatformSubscriptionPlans)
 router.route('/subscription-plans').get(getPlatformSubscriptionPlans) // Alias for frontend compatibility
+router.route('/membership-plans').get(getMembershipPlans) // Public endpoint for mobile app - Apple IAP plans
 router
   .route('/platform/subscription')
   .get(getCreatorPlatformSubscription)
@@ -197,9 +208,8 @@ router
 router.route('/platform/posting-permission').get(checkCreatorPostingPermission)
 router.route('/platform/start-trial').post(startFreeTrial)
 
-// Payment Intent and Membership Upgrade routes
-router.route('/payment/create-intent').post(createPaymentIntentEndpoint)
-router.route('/subscription/upgrade').post(upgradeMembershipSubscription)
+// Apple In-App Purchase: verify receipt and upgrade membership (iOS)
+router.route('/subscription/apple-verify').post(verifyAppleIAPAndUpgradeMembership)
 
 // Admin Payment Review routes
 router.route('/admin/payment-review/dashboard').get(getPaymentReviewDashboard)

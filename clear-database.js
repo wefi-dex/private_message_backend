@@ -25,7 +25,6 @@ async function clearDatabase() {
     // Re-enable foreign key checks
     await client.query('SET session_replication_role = DEFAULT;')
   } catch (error) {
-    console.error('❌ Error clearing database:', error)
     throw error
   } finally {
     client.release()
@@ -38,7 +37,6 @@ clearDatabase()
   .then(() => {
     process.exit(0)
   })
-  .catch((error) => {
-    console.error('Database cleanup failed:', error)
+  .catch(() => {
     process.exit(1)
   })

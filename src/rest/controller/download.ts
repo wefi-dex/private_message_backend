@@ -35,7 +35,6 @@ export const downloadFile = asyncHandler(
     stream.pipe(res)
 
     stream.on('error', (error) => {
-      console.error('File stream error:', error)
       if (!res.headersSent) {
         res.status(500).json({ success: false, message: 'Error reading file.' })
       }
@@ -89,7 +88,6 @@ export const downloadFileWithRange = asyncHandler(
     stream.pipe(res)
 
     stream.on('error', (error) => {
-      console.error('File stream error:', error)
       if (!res.headersSent) {
         res.status(500).json({ success: false, message: 'Error reading file.' })
       }
@@ -132,7 +130,6 @@ export const downloadFileWithCustomName = asyncHandler(
     stream.pipe(res)
 
     stream.on('error', (error) => {
-      console.error('File stream error:', error)
       if (!res.headersSent) {
         res.status(500).json({ success: false, message: 'Error reading file.' })
       }

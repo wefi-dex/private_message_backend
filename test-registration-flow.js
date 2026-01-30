@@ -25,12 +25,10 @@ async function testRegistrationFlow() {
     const registerData = await registerResponse.json()
 
     if (!registerResponse.ok) {
-      console.error('❌ Registration failed:', registerData.message)
       return
     }
 
   } catch (error) {
-    console.error('❌ Test failed:', error.message)
   }
 }
 

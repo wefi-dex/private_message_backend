@@ -1006,3 +1006,315 @@ export const getAllSubscriptions = async (req: Request, res: Response) => {
     });
   }
 };
+
+// ==================== MEMBERSHIP PLAN MANAGEMENT (Apple IAP) ====================
+
+// Get all membership plans (Admin only)
+export const getAllMembershipPlans = async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM "MembershipPlan" 
+       ORDER BY display_order ASC, created_at ASC`
+    );
+
+    res.status(200).json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (error: any) {
+    logger.error('Error getting membership plans:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get membership plans',
+    });
+  }
+};
+
+// Create membership plan (Admin only)
+export const createMembershipPlan = async (req: Request, res: Response) => {
+  try {
+    const {
+      tier_name,
+      tier_key,
+      apple_product_id,
+      price,
+      currency = 'USD',
+      description,
+      features,
+      display_order = 0,
+      is_active = true,
+    } = req.body;
+
+    // Validate required fields
+    if (!tier_name || !tier_key || !apple_product_id || !price) {
+      return res.status(400).json({
+        success: false,
+        message: 'tier_name, tier_key, apple_product_id, and price are required',
+      });
+    }
+
+    // Validate price is positive
+    if (price <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Price must be greater than 0',
+      });
+    }
+
+    // Check if tier_key already exists
+    const existingTier = await pool.query(
+      'SELECT id FROM "MembershipPlan" WHERE tier_key = $1',
+      [tier_key]
+    );
+
+    if (existingTier.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `A membership plan with tier_key "${tier_key}" already exists.`,
+      });
+    }
+
+    // Check if apple_product_id already exists
+    const existingProduct = await pool.query(
+      'SELECT id FROM "MembershipPlan" WHERE apple_product_id = $1',
+      [apple_product_id]
+    );
+
+    if (existingProduct.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `A membership plan with apple_product_id "${apple_product_id}" already exists.`,
+      });
+    }
+
+    // Insert new membership plan
+    const result = await pool.query(
+      `INSERT INTO "MembershipPlan" 
+       (tier_name, tier_key, apple_product_id, price, currency, description, features, display_order, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING *`,
+      [
+        tier_name,
+        tier_key,
+        apple_product_id,
+        price,
+        currency,
+        description || null,
+        features ? JSON.stringify(features) : null,
+        display_order,
+        is_active,
+      ]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Membership plan created successfully',
+      data: result.rows[0],
+    });
+  } catch (error: any) {
+    logger.error('Error creating membership plan:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to create membership plan',
+    });
+  }
+};
+
+// Update membership plan (Admin only)
+export const updateMembershipPlan = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const {
+      tier_name,
+      tier_key,
+      apple_product_id,
+      price,
+      currency,
+      description,
+      features,
+      display_order,
+      is_active,
+    } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Plan ID is required',
+      });
+    }
+
+    // Check if plan exists
+    const planCheck = await pool.query(
+      'SELECT * FROM "MembershipPlan" WHERE id = $1',
+      [id]
+    );
+
+    if (planCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Membership plan not found',
+      });
+    }
+
+    // Build update query dynamically
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (tier_name !== undefined) {
+      updates.push(`tier_name = $${paramIndex++}`);
+      values.push(tier_name);
+    }
+    if (tier_key !== undefined) {
+      // Check if tier_key conflicts with another plan
+      const conflictCheck = await pool.query(
+        'SELECT id FROM "MembershipPlan" WHERE tier_key = $1 AND id != $2',
+        [tier_key, id]
+      );
+      if (conflictCheck.rows.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Another plan with tier_key "${tier_key}" already exists.`,
+        });
+      }
+      updates.push(`tier_key = $${paramIndex++}`);
+      values.push(tier_key);
+    }
+    if (apple_product_id !== undefined) {
+      // Check if apple_product_id conflicts with another plan
+      const conflictCheck = await pool.query(
+        'SELECT id FROM "MembershipPlan" WHERE apple_product_id = $1 AND id != $2',
+        [apple_product_id, id]
+      );
+      if (conflictCheck.rows.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Another plan with apple_product_id "${apple_product_id}" already exists.`,
+        });
+      }
+      updates.push(`apple_product_id = $${paramIndex++}`);
+      values.push(apple_product_id);
+    }
+    if (price !== undefined) {
+      if (price <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Price must be greater than 0',
+        });
+      }
+      updates.push(`price = $${paramIndex++}`);
+      values.push(price);
+    }
+    if (currency !== undefined) {
+      updates.push(`currency = $${paramIndex++}`);
+      values.push(currency);
+    }
+    if (description !== undefined) {
+      updates.push(`description = $${paramIndex++}`);
+      values.push(description);
+    }
+    if (features !== undefined) {
+      updates.push(`features = $${paramIndex++}`);
+      values.push(features ? JSON.stringify(features) : null);
+    }
+    if (display_order !== undefined) {
+      updates.push(`display_order = $${paramIndex++}`);
+      values.push(display_order);
+    }
+    if (is_active !== undefined) {
+      updates.push(`is_active = $${paramIndex++}`);
+      values.push(is_active);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No fields to update',
+      });
+    }
+
+    // Add updated_at timestamp
+    updates.push(`updated_at = NOW()`);
+    // Add plan ID as last parameter
+    values.push(id);
+
+    const updateQuery = `
+      UPDATE "MembershipPlan"
+      SET ${updates.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING *
+    `;
+
+    const result = await pool.query(updateQuery, values);
+
+    res.status(200).json({
+      success: true,
+      message: 'Membership plan updated successfully',
+      data: result.rows[0],
+    });
+  } catch (error: any) {
+    logger.error('Error updating membership plan:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update membership plan',
+    });
+  }
+};
+
+// Delete membership plan (Admin only)
+export const deleteMembershipPlan = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Plan ID is required',
+      });
+    }
+
+    // Check if plan exists
+    const planCheck = await pool.query(
+      'SELECT * FROM "MembershipPlan" WHERE id = $1',
+      [id]
+    );
+
+    if (planCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Membership plan not found',
+      });
+    }
+
+    // Check if plan has active memberships
+    const activeMemberships = await pool.query(
+      `SELECT COUNT(*) as count 
+       FROM "UserMembership" 
+       WHERE tier = (SELECT tier_name FROM "MembershipPlan" WHERE id = $1) AND status = 'active'`,
+      [id]
+    );
+
+    const membershipCount = parseInt(activeMemberships.rows[0].count);
+
+    if (membershipCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete plan with ${membershipCount} active membership(s). Please deactivate the plan instead.`,
+      });
+    }
+
+    // Delete the plan
+    await pool.query('DELETE FROM "MembershipPlan" WHERE id = $1', [id]);
+
+    res.status(200).json({
+      success: true,
+      message: 'Membership plan deleted successfully',
+    });
+  } catch (error: any) {
+    logger.error('Error deleting membership plan:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to delete membership plan',
+    });
+  }
+};

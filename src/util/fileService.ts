@@ -116,7 +116,6 @@ export class FileService {
 
       return fileInfos
     } catch (error) {
-      console.error('Error listing files:', error)
       return []
     }
   }
@@ -131,7 +130,6 @@ export class FileService {
       await unlink(filePath)
       return true
     } catch (error) {
-      console.error('Error deleting file:', error)
       return false
     }
   }
