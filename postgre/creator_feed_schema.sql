@@ -69,8 +69,8 @@ $$ language 'plpgsql';
 
 CREATE TRIGGER update_creator_posts_updated_at
     BEFORE UPDATE ON creator_posts
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 
 CREATE TRIGGER update_post_comments_updated_at
     BEFORE UPDATE ON post_comments
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
