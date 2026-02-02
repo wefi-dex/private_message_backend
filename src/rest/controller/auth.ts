@@ -17,7 +17,7 @@ import { v4 as uuidv4 } from 'uuid'
 export const login = asyncHandler(async (req: Request, res: Response) => {
   const { username, email, password } = req.body
   const identifier = username || email
-  
+
   if (!identifier || !password) {
     return res
       .status(400)
@@ -449,7 +449,8 @@ export const requestPasswordReset = asyncHandler(
     if (userResult.rows.length === 0) {
       // Don't reveal if email exists for security
       return res.status(200).json({
-        message: 'If an account exists with this email, a password reset code has been sent.',
+        message:
+          'If an account exists with this email, a password reset code has been sent.',
       }) as Response
     }
 
@@ -481,7 +482,8 @@ export const requestPasswordReset = asyncHandler(
     }
 
     return res.status(200).json({
-      message: 'If an account exists with this email, a password reset code has been sent.',
+      message:
+        'If an account exists with this email, a password reset code has been sent.',
       emailSent: true,
     }) as Response
   },
@@ -538,65 +540,67 @@ export const verifyPasswordResetCode = asyncHandler(
 )
 
 // RESET PASSWORD
-export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
-  const { email, resetCode, newPassword } = req.body
+export const resetPassword = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { email, resetCode, newPassword } = req.body
 
-  if (!email || !resetCode || !newPassword) {
-    return res.status(400).json({
-      message: 'Email, reset code, and new password are required.',
+    if (!email || !resetCode || !newPassword) {
+      return res.status(400).json({
+        message: 'Email, reset code, and new password are required.',
+      }) as Response
+    }
+
+    // Validate password strength (at least 8 characters)
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        message: 'Password must be at least 8 characters long.',
+      }) as Response
+    }
+
+    const sanitizedEmail = sanitizeEmail(email)
+
+    // Find user by email or username
+    const userResult = await pool.query(
+      'SELECT * FROM "User" WHERE email = $1 OR username = $1',
+      [sanitizedEmail],
+    )
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        message: 'User not found.',
+      }) as Response
+    }
+
+    const user = userResult.rows[0]
+
+    // Check if reset code matches
+    if (user.password_reset_code !== resetCode) {
+      return res.status(400).json({
+        message: 'Invalid reset code.',
+      }) as Response
+    }
+
+    // Check if reset code has expired
+    if (
+      user.password_reset_expires &&
+      isVerificationCodeExpired(user.password_reset_expires)
+    ) {
+      return res.status(400).json({
+        message: 'Reset code has expired. Please request a new one.',
+      }) as Response
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10)
+
+    // Update password and clear reset code
+    await pool.query(
+      'UPDATE "User" SET password = $1, password_reset_code = NULL, password_reset_expires = NULL, updated_at = $2 WHERE id = $3',
+      [hashedPassword, new Date(), user.id],
+    )
+
+    return res.status(200).json({
+      message: 'Password reset successfully.',
     }) as Response
-  }
-
-  // Validate password strength (at least 8 characters)
-  if (newPassword.length < 8) {
-    return res.status(400).json({
-      message: 'Password must be at least 8 characters long.',
-    }) as Response
-  }
-
-  const sanitizedEmail = sanitizeEmail(email)
-
-  // Find user by email or username
-  const userResult = await pool.query(
-    'SELECT * FROM "User" WHERE email = $1 OR username = $1',
-    [sanitizedEmail],
-  )
-
-  if (userResult.rows.length === 0) {
-    return res.status(404).json({
-      message: 'User not found.',
-    }) as Response
-  }
-
-  const user = userResult.rows[0]
-
-  // Check if reset code matches
-  if (user.password_reset_code !== resetCode) {
-    return res.status(400).json({
-      message: 'Invalid reset code.',
-    }) as Response
-  }
-
-  // Check if reset code has expired
-  if (
-    user.password_reset_expires &&
-    isVerificationCodeExpired(user.password_reset_expires)
-  ) {
-    return res.status(400).json({
-      message: 'Reset code has expired. Please request a new one.',
-    }) as Response
-  }
-
-  // Hash new password
-  const hashedPassword = await bcrypt.hash(newPassword, 10)
-
-  // Update password and clear reset code
-  await pool.query(
-    'UPDATE "User" SET password = $1, password_reset_code = NULL, password_reset_expires = NULL, updated_at = $2 WHERE id = $3',
-    [hashedPassword, new Date(), user.id],
-  )
-
-  return res.status(200).json({
-    message: 'Password reset successfully.',
-  }) as Response
-})
+  },
+)
