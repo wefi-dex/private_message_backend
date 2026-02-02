@@ -15,8 +15,13 @@ import { EmailService } from '../../util/emailService'
 import { v4 as uuidv4 } from 'uuid'
 
 export const login = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.body || typeof req.body !== 'object') {
+    return res
+      .status(400)
+      .json({ message: 'Request body must be JSON with username or email and password.' }) as Response
+  }
   const { username, email, password } = req.body
-  const identifier = username || email
+  const identifier = (username ?? email ?? '').toString().trim()
 
   if (!identifier || !password) {
     return res
