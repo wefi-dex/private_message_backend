@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken'
 import pool from '../../util/postgre'
 import bcrypt from 'bcrypt'
 import { config } from '../../config'
+import { logger } from '../../util/logger'
 import {
   generateVerificationCode,
   getExpirationTime,
@@ -16,14 +17,17 @@ import { v4 as uuidv4 } from 'uuid'
 
 export const login = asyncHandler(async (req: Request, res: Response) => {
   if (!req.body || typeof req.body !== 'object') {
+    logger.warn('Login: missing or invalid body', { hasBody: !!req.body })
     return res
       .status(400)
       .json({ message: 'Request body must be JSON with username or email and password.' }) as Response
   }
-  const { username, email, password } = req.body
+  const { username, email, password: rawPassword } = req.body
   const identifier = (username ?? email ?? '').toString().trim()
+  const password = rawPassword != null ? String(rawPassword) : ''
 
   if (!identifier || !password) {
+    logger.warn('Login: missing identifier or password', { hasIdentifier: !!identifier, hasPassword: !!password })
     return res
       .status(400)
       .json({ message: 'Username and password are required.' }) as Response
