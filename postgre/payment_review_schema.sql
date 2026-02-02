@@ -97,12 +97,6 @@ ALTER TABLE "User" ADD COLUMN IF NOT EXISTS payout_method VARCHAR(50);
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS payout_details JSONB;
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS minimum_payout_amount DECIMAL(10,2) DEFAULT 50.00;
 
--- Insert sample data for testing
-INSERT INTO "PaymentReviewRequest" (creator_id, request_type, amount, description) VALUES
-(gen_random_uuid(), 'payout', 150.00, 'Monthly payout request'),
-(gen_random_uuid(), 'subscription_approval', 0.00, 'Request to enable premium subscription features'),
-(gen_random_uuid(), 'payment_issue', 25.00, 'Double charge on subscription payment');
-
 -- Create a view for payment review dashboard
 CREATE OR REPLACE VIEW "PaymentReviewDashboard" AS
 SELECT

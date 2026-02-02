@@ -6,6 +6,7 @@
     "build": "tsc",
     "start": "node --max-old-space-size=2048 dist/index.js",
     "dev": "nodemon src/index.ts",
+    "db:migrate": "node run-migrations.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "husky:install": "husky install"
