@@ -1,6 +1,6 @@
-import { initializeApp, cert } from 'firebase-admin/app';
-import { getDatabase } from 'firebase-admin/database';
-import { config } from '../config';
+import { initializeApp, cert } from 'firebase-admin/app'
+import { getDatabase } from 'firebase-admin/database'
+import { config } from '../config'
 
 // Initialize Firebase Admin SDK
 const serviceAccount = {
@@ -14,14 +14,14 @@ const serviceAccount = {
   token_uri: config.firebase.tokenUri,
   auth_provider_x509_cert_url: config.firebase.authProviderX509CertUrl,
   client_x509_cert_url: config.firebase.clientX509CertUrl,
-};
+}
 
 // Initialize the app
 const app = initializeApp({
   credential: cert(serviceAccount as any),
-  databaseURL: config.firebase.databaseURL
-});
+  databaseURL: config.firebase.databaseURL,
+})
 
-const db = getDatabase(app);
+const db = getDatabase(app)
 
-export { db }; 
+export { db }
