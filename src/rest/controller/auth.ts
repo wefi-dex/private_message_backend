@@ -53,6 +53,13 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     }) as Response
   }
 
+  if (!user.password || typeof user.password !== 'string') {
+    logger.warn('Login: user has no password hash', { userId: user.id })
+    return res
+      .status(401)
+      .json({ message: 'Invalid username or password.' }) as Response
+  }
+
   const passwordMatch = await bcrypt.compare(password, user.password)
   if (!passwordMatch) {
     return res
@@ -65,10 +72,24 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   const payload = { id: user.id, username: user.username }
   const token = jwt.sign(payload, secretKey, options)
 
-  // Exclude password and pass avatar as string
-  const { password: userPassword, ...userWithoutPassword } = user
-  // avatar is now a string (URL or null)
-  res.status(200).json({ token, user: userWithoutPassword }) as Response
+  // Return only fields the app needs for session - keeps response small and avoids "Message too long" on iOS/React Native
+  const loginUser = {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    alias: user.alias,
+    role: user.role,
+    bio: user.bio,
+    avatar: user.avatar,
+    display_name: user.display_name,
+    displayName: user.display_name,
+    external_link: user.external_link,
+    creator_profile_completed: user.creator_profile_completed,
+    creator_approved: user.creator_approved,
+    membership_tier: user.membership_tier,
+    email_verified: user.email_verified,
+  }
+  return res.status(200).json({ token, user: loginUser }) as Response
 })
 
 // REGISTER USER
