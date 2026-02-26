@@ -419,13 +419,11 @@ export const checkCreatorPostingPermission = asyncHandler(
   async (req: Request, res: Response) => {
     let creatorId = req.user?.id;
 
-    // For testing purposes, use a default creator ID if no authenticated user
     if (!creatorId) {
       creatorId = "922d9805-ee01-4f9b-a121-6129d684d4bf"; // Test creator ID
     }
 
     try {
-      // Check if creator has active platform subscription or trial
       const subscriptionResult = await pool.query(
         `SELECT cps.*, psp.name as plan_name
          FROM "CreatorPlatformSubscription" cps
