@@ -43,6 +43,8 @@ interface IConfig {
     password: string
     from: string
   }
+  /** If set, this creator email always gets canPost (invite link / QR) for Apple review. */
+  appleReviewCreatorEmail: string
 }
 
 export const initConfig = (): IConfig => {
@@ -72,6 +74,7 @@ export const initConfig = (): IConfig => {
     EMAIL_USER,
     EMAIL_PASSWORD,
     EMAIL_FROM,
+    APPLE_REVIEW_CREATOR_EMAIL,
   } = process.env
 
   const defaultConfig = {
@@ -116,6 +119,7 @@ export const initConfig = (): IConfig => {
       password: EMAIL_PASSWORD || '',
       from: EMAIL_FROM || EMAIL_USER || 'noreply@example.com',
     },
+    appleReviewCreatorEmail: (APPLE_REVIEW_CREATOR_EMAIL || '').trim() || '',
   }
   
   switch (NODE_ENV) {

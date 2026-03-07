@@ -1,11 +1,12 @@
-import { Request, Response } from "express";
-import asyncHandler from "../middleware/asyncHandler";
-import pool from "../../util/postgre";
-import { logger } from "../../util/logger";
+import { Request, Response } from 'express'
+import asyncHandler from '../middleware/asyncHandler'
+import pool from '../../util/postgre'
+import { logger } from '../../util/logger'
+import { config } from '../../config'
 import {
   verifyAppleReceipt,
   getTierFromProductId,
-} from "../../config/apple-iap";
+} from '../../config/apple-iap'
 
 // Get platform subscription plans
 export const getPlatformSubscriptionPlans = asyncHandler(
@@ -15,24 +16,24 @@ export const getPlatformSubscriptionPlans = asyncHandler(
       // This prevents duplicate plans with the same name but different IDs
       const result = await pool.query(
         `SELECT DISTINCT ON (name) *
-         FROM "PlatformSubscriptionPlan" 
-         WHERE is_active = true 
-         ORDER BY name, created_at DESC, price ASC`
-      );
-      
+         FROM "PlatformSubscriptionPlan"
+         WHERE is_active = true
+         ORDER BY name, created_at DESC, price ASC`,
+      )
+
       res.status(200).json({
         success: true,
         data: result.rows,
-      });
+      })
     } catch (error: any) {
-      logger.error("Error getting platform subscription plans:", error);
+      logger.error('Error getting platform subscription plans:', error)
       res.status(500).json({
         success: false,
-        message: error.message || "Failed to get platform subscription plans",
-      });
+        message: error.message || 'Failed to get platform subscription plans',
+      })
     }
-  }
-);
+  },
+)
 
 // Get membership plans (Apple IAP) - Public endpoint for mobile app
 export const getMembershipPlans = asyncHandler(
@@ -40,35 +41,35 @@ export const getMembershipPlans = asyncHandler(
     try {
       const result = await pool.query(
         `SELECT id, tier_name, tier_key, apple_product_id, price, currency, description, features, display_order
-         FROM "MembershipPlan" 
-         WHERE is_active = true 
-         ORDER BY display_order ASC, created_at ASC`
-      );
-      
+         FROM "MembershipPlan"
+         WHERE is_active = true
+         ORDER BY display_order ASC, created_at ASC`,
+      )
+
       res.status(200).json({
         success: true,
         data: result.rows,
-      });
+      })
     } catch (error: any) {
-      logger.error("Error getting membership plans:", error);
+      logger.error('Error getting membership plans:', error)
       res.status(500).json({
         success: false,
-        message: error.message || "Failed to get membership plans",
-      });
+        message: error.message || 'Failed to get membership plans',
+      })
     }
-  }
-);
+  },
+)
 
 // Get creator's platform subscription status
 export const getCreatorPlatformSubscription = asyncHandler(
   async (req: Request, res: Response) => {
-    const creatorId = req.user?.id;
+    const creatorId = req.user?.id
 
     if (!creatorId) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required",
-      });
+        message: 'Authentication required',
+      })
     }
 
     try {
@@ -79,99 +80,99 @@ export const getCreatorPlatformSubscription = asyncHandler(
          WHERE cps.creator_id = $1 AND cps.status IN ('active', 'trial')
          ORDER BY cps.created_at DESC
          LIMIT 1`,
-        [creatorId]
-      );
+        [creatorId],
+      )
 
       if (result.rows.length > 0) {
         res.status(200).json({
           success: true,
           data: result.rows[0],
-        });
+        })
       } else {
         res.status(200).json({
           success: true,
           data: null,
-        });
+        })
       }
     } catch (error: any) {
-      logger.error("Error getting creator platform subscription:", error);
+      logger.error('Error getting creator platform subscription:', error)
       res.status(500).json({
         success: false,
-        message: error.message || "Failed to get creator platform subscription",
-      });
+        message: error.message || 'Failed to get creator platform subscription',
+      })
     }
-  }
-);
+  },
+)
 
 // Create platform subscription for creator
 export const createPlatformSubscription = asyncHandler(
   async (req: Request, res: Response) => {
-    const creatorId = req.user?.id;
-    const { planId, customerId } = req.body;
+    const creatorId = req.user?.id
+    const { planId, customerId } = req.body
 
     if (!creatorId) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required",
-      });
+        message: 'Authentication required',
+      })
     }
 
     if (!planId) {
       return res.status(400).json({
         success: false,
-        message: "Plan ID is required",
-      });
+        message: 'Plan ID is required',
+      })
     }
 
     try {
       // Get creator details
       const creatorResult = await pool.query(
         'SELECT email, username, alias FROM "User" WHERE id = $1',
-        [creatorId]
-      );
+        [creatorId],
+      )
 
       if (creatorResult.rows.length === 0) {
         return res.status(404).json({
           success: false,
-          message: "Creator not found",
-        });
+          message: 'Creator not found',
+        })
       }
 
       // Check if plan exists
       const planResult = await pool.query(
         'SELECT * FROM "PlatformSubscriptionPlan" WHERE id = $1 AND is_active = true',
-        [planId]
-      );
+        [planId],
+      )
 
       if (planResult.rows.length === 0) {
         return res.status(404).json({
           success: false,
-          message: "Platform subscription plan not found",
-        });
+          message: 'Platform subscription plan not found',
+        })
       }
 
-      const plan = planResult.rows[0];
+      const plan = planResult.rows[0]
 
       // Check if creator already has an active platform subscription
       const existingSubscriptionResult = await pool.query(
         'SELECT * FROM "CreatorPlatformSubscription" WHERE creator_id = $1 AND status IN ($2, $3)',
-        [creatorId, "active", "trial"]
-      );
+        [creatorId, 'active', 'trial'],
+      )
 
       if (existingSubscriptionResult.rows.length > 0) {
         return res.status(400).json({
           success: false,
-          message: "You already have an active platform subscription",
-        });
+          message: 'You already have an active platform subscription',
+        })
       }
 
       // For development/testing, use placeholder external IDs
-      const externalCustomerId = customerId || "test_customer_" + Date.now();
-      const paymentIntentId = "test_payment_intent_" + Date.now();
+      const externalCustomerId = customerId || 'test_customer_' + Date.now()
+      const paymentIntentId = 'test_payment_intent_' + Date.now()
 
       // Calculate end date
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + plan.duration_days);
+      const endDate = new Date()
+      endDate.setDate(endDate.getDate() + plan.duration_days)
 
       // Create platform subscription in database
       const subscriptionResult = await pool.query(
@@ -179,10 +180,10 @@ export const createPlatformSubscription = asyncHandler(
          (creator_id, plan_id, end_date, payment_method, external_payment_id)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING *`,
-        [creatorId, planId, endDate, "test", paymentIntentId]
-      );
+        [creatorId, planId, endDate, 'test', paymentIntentId],
+      )
 
-      const subscription = subscriptionResult.rows[0];
+      const subscription = subscriptionResult.rows[0]
 
       // Create platform payment transaction
       const transactionResult = await pool.query(
@@ -195,14 +196,14 @@ export const createPlatformSubscription = asyncHandler(
           subscription.id,
           creatorId,
           plan.price,
-          "usd",
-          "test",
+          'usd',
+          'test',
           paymentIntentId,
-          "completed", // For testing, mark as completed
-          "platform_subscription",
+          'completed', // For testing, mark as completed
+          'platform_subscription',
           `Platform subscription to ${plan.name} plan`,
-        ]
-      );
+        ],
+      )
 
       // Update user's platform subscription status
       await pool.query(
@@ -211,101 +212,101 @@ export const createPlatformSubscription = asyncHandler(
              platform_subscription_end_date = $1,
              updated_at = NOW()
          WHERE id = $2`,
-        [endDate, creatorId]
-      );
+        [endDate, creatorId],
+      )
 
       res.status(201).json({
         success: true,
-        message: "Platform subscription created successfully",
+        message: 'Platform subscription created successfully',
         data: {
           subscription,
           transaction: transactionResult.rows[0],
           paymentIntent: {
             id: paymentIntentId,
-            clientSecret: "test_secret",
+            clientSecret: 'test_secret',
             amount: plan.price * 100,
-            currency: "usd",
+            currency: 'usd',
           },
           customerId: externalCustomerId,
         },
-      });
+      })
     } catch (error: any) {
-      logger.error("Error creating platform subscription:", error);
+      logger.error('Error creating platform subscription:', error)
       res.status(500).json({
         success: false,
-        message: error.message || "Failed to create platform subscription",
-      });
+        message: error.message || 'Failed to create platform subscription',
+      })
     }
-  }
-);
+  },
+)
 
 // Start free trial for creator
 export const startFreeTrial = asyncHandler(
   async (req: Request, res: Response) => {
-    const creatorId = req.user?.id;
+    const creatorId = req.user?.id
 
     if (!creatorId) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required",
-      });
+        message: 'Authentication required',
+      })
     }
 
     try {
       // Check if creator has already used trial
       const userResult = await pool.query(
         'SELECT has_used_trial FROM "User" WHERE id = $1',
-        [creatorId]
-      );
+        [creatorId],
+      )
 
       if (userResult.rows.length === 0) {
         return res.status(404).json({
           success: false,
-          message: "Creator not found",
-        });
+          message: 'Creator not found',
+        })
       }
 
-      const user = userResult.rows[0];
+      const user = userResult.rows[0]
 
       if (user.has_used_trial) {
         return res.status(400).json({
           success: false,
-          message: "You have already used your free trial",
-        });
+          message: 'You have already used your free trial',
+        })
       }
 
       // Check if creator already has an active subscription
       const existingSubscriptionResult = await pool.query(
         'SELECT * FROM "CreatorPlatformSubscription" WHERE creator_id = $1 AND status IN ($2, $3)',
-        [creatorId, "active", "trial"]
-      );
+        [creatorId, 'active', 'trial'],
+      )
 
       if (existingSubscriptionResult.rows.length > 0) {
         return res.status(400).json({
           success: false,
-          message: "You already have an active subscription or trial",
-        });
+          message: 'You already have an active subscription or trial',
+        })
       }
 
       // Get basic plan for trial
       const planResult = await pool.query(
         'SELECT * FROM "PlatformSubscriptionPlan" WHERE name = $1 AND is_active = true',
-        ["Creator Basic"]
-      );
+        ['Creator Basic'],
+      )
 
       if (planResult.rows.length === 0) {
         return res.status(404).json({
           success: false,
-          message: "Basic plan not found for trial",
-        });
+          message: 'Basic plan not found for trial',
+        })
       }
 
-      const plan = planResult.rows[0];
+      const plan = planResult.rows[0]
 
       // Calculate trial dates (30 days)
-      const trialStartDate = new Date();
-      const trialEndDate = new Date();
-      trialEndDate.setDate(trialEndDate.getDate() + 30);
+      const trialStartDate = new Date()
+      const trialEndDate = new Date()
+      trialEndDate.setDate(trialEndDate.getDate() + 30)
 
       // Create trial subscription
       const subscriptionResult = await pool.query(
@@ -316,13 +317,13 @@ export const startFreeTrial = asyncHandler(
         [
           creatorId,
           plan.id,
-          "trial",
+          'trial',
           trialStartDate,
           trialEndDate,
-          "trial",
-          "trial_" + Date.now(),
-        ]
-      );
+          'trial',
+          'trial_' + Date.now(),
+        ],
+      )
 
       // Update user's trial status
       await pool.query(
@@ -334,43 +335,43 @@ export const startFreeTrial = asyncHandler(
              has_used_trial = true,
              updated_at = NOW()
          WHERE id = $4`,
-        [trialEndDate, trialStartDate, trialEndDate, creatorId]
-      );
+        [trialEndDate, trialStartDate, trialEndDate, creatorId],
+      )
 
       res.status(201).json({
         success: true,
-        message: "Free trial started successfully",
+        message: 'Free trial started successfully',
         data: {
           subscription: subscriptionResult.rows[0],
           trialEndDate,
         },
-      });
+      })
     } catch (error: any) {
-      logger.error("Error starting free trial:", error);
+      logger.error('Error starting free trial:', error)
       res.status(500).json({
         success: false,
-        message: error.message || "Failed to start free trial",
-      });
+        message: error.message || 'Failed to start free trial',
+      })
     }
-  }
-);
+  },
+)
 
 // Cancel platform subscription
 export const cancelPlatformSubscription = asyncHandler(
   async (req: Request, res: Response) => {
-    let creatorId = req.user?.id;
-    const { subscriptionId } = req.params;
+    let creatorId = req.user?.id
+    const { subscriptionId } = req.params
 
     // For testing purposes, use a default creator ID if no authenticated user
     if (!creatorId) {
-      creatorId = "922d9805-ee01-4f9b-a121-6129d684d4bf"; // Test creator ID
+      creatorId = '922d9805-ee01-4f9b-a121-6129d684d4bf' // Test creator ID
     }
 
     if (!subscriptionId) {
       return res.status(400).json({
         success: false,
-        message: "Subscription ID is required",
-      });
+        message: 'Subscription ID is required',
+      })
     }
 
     try {
@@ -380,14 +381,14 @@ export const cancelPlatformSubscription = asyncHandler(
          SET status = 'cancelled', updated_at = NOW()
          WHERE id = $1 AND creator_id = $2
          RETURNING *`,
-        [subscriptionId, creatorId]
-      );
+        [subscriptionId, creatorId],
+      )
 
       if (result.rows.length === 0) {
         return res.status(404).json({
           success: false,
-          message: "Subscription not found",
-        });
+          message: 'Subscription not found',
+        })
       }
 
       // Update user's platform subscription status
@@ -396,34 +397,79 @@ export const cancelPlatformSubscription = asyncHandler(
          SET platform_subscription_status = 'inactive',
              updated_at = NOW()
          WHERE id = $1`,
-        [creatorId]
-      );
+        [creatorId],
+      )
 
       res.status(200).json({
         success: true,
-        message: "Platform subscription cancelled successfully",
+        message: 'Platform subscription cancelled successfully',
         data: result.rows[0],
-      });
+      })
     } catch (error: any) {
-      logger.error("Error cancelling platform subscription:", error);
+      logger.error('Error cancelling platform subscription:', error)
       res.status(500).json({
         success: false,
-        message: error.message || "Failed to cancel platform subscription",
-      });
+        message: error.message || 'Failed to cancel platform subscription',
+      })
     }
-  }
-);
+  },
+)
 
-// Check if creator has permission to post
+// Check if creator has permission to post (and to share invite link)
 export const checkCreatorPostingPermission = asyncHandler(
   async (req: Request, res: Response) => {
-    let creatorId = req.user?.id;
+    let creatorId = req.user?.id
 
     if (!creatorId) {
-      creatorId = "922d9805-ee01-4f9b-a121-6129d684d4bf"; // Test creator ID
+      creatorId = '922d9805-ee01-4f9b-a121-6129d684d4bf' // Test creator ID fallback
     }
 
     try {
+      const userResult = await pool.query(
+        `SELECT email, created_at, trial_start_date, trial_end_date, has_used_trial
+         FROM "User" WHERE id = $1`,
+        [creatorId],
+      )
+      const user = userResult.rows[0] || {}
+
+      // Apple review / demo account: full permission (invite link, post) when email is configured
+      const reviewEmail = config.appleReviewCreatorEmail
+      if (
+        reviewEmail &&
+        user.email &&
+        String(user.email).toLowerCase() === reviewEmail.toLowerCase()
+      ) {
+        return res.status(200).json({
+          success: true,
+          canPost: true,
+          message: 'Apple review creator (full access)',
+        })
+      }
+
+      // Trial: first 30 days from created_at, or explicit trial_end_date in future
+      const now = new Date()
+      const userCreatedAt = user.created_at ? new Date(user.created_at) : now
+      const trialEndDate = user.trial_end_date
+        ? new Date(user.trial_end_date)
+        : null
+      let isInTrial = false
+      if (!user.has_used_trial && !user.trial_start_date) {
+        const daysSinceRegistration = Math.floor(
+          (now.getTime() - userCreatedAt.getTime()) / (1000 * 60 * 60 * 24),
+        )
+        isInTrial = daysSinceRegistration <= 30
+      } else if (user.trial_start_date && trialEndDate) {
+        isInTrial = now < trialEndDate
+      }
+      if (isInTrial) {
+        return res.status(200).json({
+          success: true,
+          canPost: true,
+          message: 'In trial period',
+        })
+      }
+
+      // Active platform subscription
       const subscriptionResult = await pool.query(
         `SELECT cps.*, psp.name as plan_name
          FROM "CreatorPlatformSubscription" cps
@@ -432,12 +478,12 @@ export const checkCreatorPostingPermission = asyncHandler(
          AND cps.end_date > NOW()
          ORDER BY cps.created_at DESC
          LIMIT 1`,
-        [creatorId]
-      );
+        [creatorId],
+      )
 
       if (subscriptionResult.rows.length > 0) {
-        const subscription = subscriptionResult.rows[0];
-        res.status(200).json({
+        const subscription = subscriptionResult.rows[0]
+        return res.status(200).json({
           success: true,
           canPost: true,
           subscription: {
@@ -446,115 +492,119 @@ export const checkCreatorPostingPermission = asyncHandler(
             status: subscription.status,
             endDate: subscription.end_date,
           },
-        });
-      } else {
-        res.status(200).json({
-          success: true,
-          canPost: false,
-          message: "No active platform subscription found",
-        });
+        })
       }
+
+      res.status(200).json({
+        success: true,
+        canPost: false,
+        message: 'No active platform subscription found',
+      })
     } catch (error: any) {
-      logger.error("Error checking creator posting permission:", error);
+      logger.error('Error checking creator posting permission:', error)
       res.status(500).json({
         success: false,
-        message: error.message || "Failed to check posting permission",
-      });
+        message: error.message || 'Failed to check posting permission',
+      })
     }
-  }
-);
+  },
+)
 
 // Apple In-App Purchase: verify receipt and upgrade membership (iOS)
-const APPLE_IAP_STATUS_VALID = 0;
+const APPLE_IAP_STATUS_VALID = 0
 
 export const verifyAppleIAPAndUpgradeMembership = asyncHandler(
   async (req: Request, res: Response) => {
-    const userId = req.user?.id;
-    const { receiptData, productId: productIdBody, transactionId: transactionIdBody } = req.body;
+    const userId = req.user?.id
+    const {
+      receiptData,
+      productId: productIdBody,
+      transactionId: transactionIdBody,
+    } = req.body
 
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required",
-      });
+        message: 'Authentication required',
+      })
     }
 
-    if (!receiptData || typeof receiptData !== "string") {
+    if (!receiptData || typeof receiptData !== 'string') {
       return res.status(400).json({
         success: false,
-        message: "receiptData (base64) is required",
-      });
+        message: 'receiptData (base64) is required',
+      })
     }
 
-    const sharedSecret = process.env.APPLE_IAP_SHARED_SECRET;
+    const sharedSecret = process.env.APPLE_IAP_SHARED_SECRET
     if (!sharedSecret) {
-      logger.error("APPLE_IAP_SHARED_SECRET is not set");
+      logger.error('APPLE_IAP_SHARED_SECRET is not set')
       return res.status(500).json({
         success: false,
-        message: "Apple In-App Purchase is not configured. Please contact support.",
-        error: "apple_iap_not_configured",
-      });
+        message:
+          'Apple In-App Purchase is not configured. Please contact support.',
+        error: 'apple_iap_not_configured',
+      })
     }
 
     try {
-      const appleResponse = await verifyAppleReceipt(receiptData, sharedSecret);
+      const appleResponse = await verifyAppleReceipt(receiptData, sharedSecret)
 
       if (appleResponse.status !== APPLE_IAP_STATUS_VALID) {
-        logger.warn("Apple receipt verification failed", {
+        logger.warn('Apple receipt verification failed', {
           status: appleResponse.status,
           userId,
-        });
+        })
         return res.status(400).json({
           success: false,
-          message: "Invalid or expired receipt",
-          error: "invalid_receipt",
+          message: 'Invalid or expired receipt',
+          error: 'invalid_receipt',
           status: appleResponse.status,
-        });
+        })
       }
 
       // Prefer latest_receipt_info (subscriptions); fallback to receipt.in_app
       const items =
-        appleResponse.latest_receipt_info ||
-        appleResponse.receipt?.in_app ||
-        [];
+        appleResponse.latest_receipt_info || appleResponse.receipt?.in_app || []
       if (items.length === 0) {
         return res.status(400).json({
           success: false,
-          message: "No purchase found in receipt",
-          error: "no_purchase_in_receipt",
-        });
+          message: 'No purchase found in receipt',
+          error: 'no_purchase_in_receipt',
+        })
       }
 
       // Use the most recent transaction (by expiry or purchase date, descending)
       const latest = [...items].sort(
         (a, b) =>
-          parseInt(b.expires_date_ms || b.purchase_date_ms || "0", 10) -
-          parseInt(a.expires_date_ms || a.purchase_date_ms || "0", 10)
-      )[0];
-      const productId = latest.product_id;
-      const transactionId = latest.transaction_id || transactionIdBody;
+          parseInt(b.expires_date_ms || b.purchase_date_ms || '0', 10) -
+          parseInt(a.expires_date_ms || a.purchase_date_ms || '0', 10),
+      )[0]
+      const productId = latest.product_id
+      const transactionId = latest.transaction_id || transactionIdBody
 
       // Look up membership plan from database by Apple product ID
       const planResult = await pool.query(
         'SELECT tier_name, tier_key FROM "MembershipPlan" WHERE apple_product_id = $1 AND is_active = true',
-        [productIdBody || productId]
-      );
+        [productIdBody || productId],
+      )
 
-      let membershipTier: string | null = null;
+      let membershipTier: string | null = null
       if (planResult.rows.length > 0) {
-        membershipTier = planResult.rows[0].tier_name;
+        membershipTier = planResult.rows[0].tier_name
       } else {
         // Fallback to hardcoded mapping if not found in database
-        membershipTier = getTierFromProductId(productIdBody || productId);
+        membershipTier = getTierFromProductId(productIdBody || productId)
       }
 
       if (!membershipTier) {
         return res.status(400).json({
           success: false,
-          message: "Unrecognized subscription product. Please ensure the product ID is configured in the admin panel.",
-          error: "unknown_product",
+          message:
+            'Unrecognized subscription product. Please ensure the product ID is configured in the admin panel.',
+          error: 'unknown_product',
           productId: productIdBody || productId,
-        });
+        })
       }
 
       // Ensure User has membership columns
@@ -563,13 +613,16 @@ export const verifyAppleIAPAndUpgradeMembership = asyncHandler(
           ALTER TABLE "User"
           ADD COLUMN IF NOT EXISTS membership_tier VARCHAR(50),
           ADD COLUMN IF NOT EXISTS membership_updated_at TIMESTAMP
-        `);
+        `)
       } catch (alterErr: any) {
         if (
-          !alterErr.message?.includes("already exists") &&
-          !alterErr.message?.includes("duplicate")
+          !alterErr.message?.includes('already exists') &&
+          !alterErr.message?.includes('duplicate')
         ) {
-          logger.warn("Error ensuring User membership columns:", alterErr.message);
+          logger.warn(
+            'Error ensuring User membership columns:',
+            alterErr.message,
+          )
         }
       }
 
@@ -579,8 +632,8 @@ export const verifyAppleIAPAndUpgradeMembership = asyncHandler(
              membership_updated_at = NOW(),
              updated_at = NOW()
          WHERE id = $2`,
-        [membershipTier, userId]
-      );
+        [membershipTier, userId],
+      )
 
       try {
         await pool.query(
@@ -588,10 +641,17 @@ export const verifyAppleIAPAndUpgradeMembership = asyncHandler(
            VALUES ($1, $2, $3, $4, NOW())
            ON CONFLICT (user_id)
            DO UPDATE SET tier = $2, payment_intent_id = $3, status = $4, updated_at = NOW()`,
-          [userId, membershipTier, transactionId || `apple_${productId}`, "active"]
-        );
+          [
+            userId,
+            membershipTier,
+            transactionId || `apple_${productId}`,
+            'active',
+          ],
+        )
       } catch (umErr: any) {
-        if (umErr.message?.includes('relation "UserMembership" does not exist')) {
+        if (
+          umErr.message?.includes('relation "UserMembership" does not exist')
+        ) {
           await pool.query(`
             CREATE TABLE IF NOT EXISTS "UserMembership" (
               id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -602,16 +662,21 @@ export const verifyAppleIAPAndUpgradeMembership = asyncHandler(
               created_at TIMESTAMP DEFAULT NOW(),
               updated_at TIMESTAMP DEFAULT NOW()
             )
-          `);
+          `)
           await pool.query(
             `INSERT INTO "UserMembership" (user_id, tier, payment_intent_id, status, created_at)
              VALUES ($1, $2, $3, $4, NOW())
              ON CONFLICT (user_id)
              DO UPDATE SET tier = $2, payment_intent_id = $3, status = $4, updated_at = NOW()`,
-            [userId, membershipTier, transactionId || `apple_${productId}`, "active"]
-          );
+            [
+              userId,
+              membershipTier,
+              transactionId || `apple_${productId}`,
+              'active',
+            ],
+          )
         } else {
-          logger.error("Error upserting UserMembership (Apple IAP):", umErr);
+          logger.error('Error upserting UserMembership (Apple IAP):', umErr)
         }
       }
 
@@ -625,14 +690,14 @@ export const verifyAppleIAPAndUpgradeMembership = asyncHandler(
           productId: productIdBody || productId,
           updatedAt: new Date().toISOString(),
         },
-      });
+      })
     } catch (error: any) {
-      logger.error("Error verifying Apple IAP receipt:", error);
+      logger.error('Error verifying Apple IAP receipt:', error)
       res.status(500).json({
         success: false,
-        message: error.message || "Failed to verify Apple purchase",
-        error: "apple_iap_verify_error",
-      });
+        message: error.message || 'Failed to verify Apple purchase',
+        error: 'apple_iap_verify_error',
+      })
     }
-  }
-);
+  },
+)
