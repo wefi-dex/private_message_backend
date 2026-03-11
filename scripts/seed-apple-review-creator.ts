@@ -1,12 +1,17 @@
 /**
  * One-off: grant active platform subscription to creator_demo@kevesta.com
  * so they have full permission (invite link, posting) for Apple review.
+ * Cleans any existing subscription for this user, then inserts a fresh one.
  * Run: npx ts-node scripts/seed-apple-review-creator.ts
  */
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 import pool from '../src/util/postgre';
 
-const SQL = `
+const DEMO_EMAIL = 'creator_demo@kevesta.com';
+/** Username used in invite link https://pm.me/invite/creatordemo - must exist in DB for lookup */
+const DEMO_USERNAME = 'creatordemo';
+
+const INSERT_SQL = `
 INSERT INTO "CreatorPlatformSubscription" (
   creator_id,
   plan_id,
@@ -27,22 +32,19 @@ SELECT
   'apple_review',
   'apple_review_creator_demo'
 FROM "User" u
-WHERE LOWER(TRIM(u.email)) = 'creator_demo@kevesta.com'
+WHERE LOWER(TRIM(u.email)) = $1
   AND u.role = 'creator'
-  AND NOT EXISTS (
-    SELECT 1 FROM "CreatorPlatformSubscription" cps
-    WHERE cps.creator_id = u.id AND cps.status = 'active' AND cps.end_date > NOW()
-  )
 `;
 
 async function main() {
   const client = await pool.connect();
   try {
     const userRes = await client.query(
-      `SELECT id, email, role FROM "User" WHERE LOWER(TRIM(email)) = 'creator_demo@kevesta.com'`
+      `SELECT id, email, role FROM "User" WHERE LOWER(TRIM(email)) = $1`,
+      [DEMO_EMAIL]
     );
     if (userRes.rows.length === 0) {
-      console.log('User creator_demo@kevesta.com not found in this database. Create the account first or run against the DB where it exists.');
+      console.log(`User ${DEMO_EMAIL} not found. Create the account first or run against the DB where it exists.`);
       return;
     }
     const user = userRes.rows[0];
@@ -51,24 +53,36 @@ async function main() {
         `UPDATE "User" SET role = 'creator', updated_at = NOW() WHERE id = $1`,
         [user.id]
       );
-      console.log(`Updated role from "${user.role}" to "creator" for creator_demo@kevesta.com.`);
+      console.log(`Updated role to "creator" for ${DEMO_EMAIL}.`);
     }
 
-    const existingRes = await client.query(
-      `SELECT 1 FROM "CreatorPlatformSubscription" WHERE creator_id = $1 AND status = 'active' AND end_date > NOW()`,
+    // Ensure demo user has a valid username so invite link (pm.me/invite/USERNAME) and lookup work
+    const currentUsername = (user.username && String(user.username).trim()) || '';
+    if (currentUsername !== DEMO_USERNAME) {
+      await client.query(
+        `UPDATE "User" SET username = $1, updated_at = NOW() WHERE id = $2`,
+        [DEMO_USERNAME, user.id]
+      );
+      console.log(`Set username to "${DEMO_USERNAME}" for invite link (was: ${currentUsername || '(empty)'}).`);
+    }
+
+    // Clean: delete any existing platform subscriptions for this creator
+    const deleteRes = await client.query(
+      `DELETE FROM "CreatorPlatformSubscription" WHERE creator_id = $1`,
       [user.id]
     );
-    if (existingRes.rows.length > 0) {
-      console.log('User already has an active platform subscription. No insert needed.');
-      return;
+    const deleted = deleteRes.rowCount ?? 0;
+    if (deleted > 0) {
+      console.log(`Cleaned ${deleted} existing subscription row(s) for ${DEMO_EMAIL}.`);
     }
 
-    const res = await client.query(SQL);
-    const rowCount = res.rowCount ?? 0;
-    if (rowCount > 0) {
-      console.log('OK: Inserted active platform subscription for creator_demo@kevesta.com');
+    // Insert fresh record
+    const insertRes = await client.query(INSERT_SQL, [DEMO_EMAIL]);
+    const inserted = insertRes.rowCount ?? 0;
+    if (inserted > 0) {
+      console.log(`OK: Inserted active platform subscription for ${DEMO_EMAIL}.`);
     } else {
-      console.log('No row inserted (unexpected).');
+      console.log('No row inserted (check that an active PlatformSubscriptionPlan exists).');
     }
   } finally {
     client.release();

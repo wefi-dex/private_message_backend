@@ -1,30 +1,39 @@
 require('dotenv').config()
 const { Pool } = require('pg')
 
-// Database configuration - using the same as the main app
+// Database configuration - use .env or pass DATABASE_URL (remote DBs like Render require SSL)
+const connectionString =
+  process.env.DATABASE_URL ||
+  'postgresql://username:password@localhost:5432/private_message_db'
 const pool = new Pool({
-  connectionString:
-    process.env.DATABASE_URL ||
-    'postgresql://username:password@localhost:5432/private_message_db',
+  connectionString,
+  ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false },
 })
 
 async function clearDatabase() {
   const client = await pool.connect()
 
   try {
-
-    // Disable foreign key checks temporarily (if needed)
-    await client.query('SET session_replication_role = replica;')
-
-    // Clear all tables in the correct order (respecting foreign key constraints)
-    const tables = ['UserReport', 'UserBlock', 'User']
-
-    for (const table of tables) {
-      await client.query(`DELETE FROM "${table}";`)
+    // Get all tables in public schema (quote identifiers for mixed-case names)
+    const tablesResult = await client.query(`
+      SELECT tablename FROM pg_tables
+      WHERE schemaname = 'public'
+      ORDER BY tablename
+    `)
+    const tables = tablesResult.rows.map((r) => r.tablename)
+    if (tables.length === 0) {
+      console.log('Clear database: no tables in public schema')
+      return
     }
-    // Re-enable foreign key checks
-    await client.query('SET session_replication_role = DEFAULT;')
+    // Quote each table name (required for mixed-case like "User", "MembershipPlan")
+    const quoted = tables.map((t) => `"${t}"`).join(', ')
+    await client.query(`TRUNCATE ${quoted} RESTART IDENTITY CASCADE`)
+
+    console.log('Clear database: success')
+    console.log('  Tables truncated:', tables.length)
+    tables.forEach((t) => console.log('    -', t))
   } catch (error) {
+    console.error('Clear database failed:', error.message)
     throw error
   } finally {
     client.release()
@@ -37,6 +46,7 @@ clearDatabase()
   .then(() => {
     process.exit(0)
   })
-  .catch(() => {
+  .catch((err) => {
+    console.error('Clear database failed:', err.message)
     process.exit(1)
   })

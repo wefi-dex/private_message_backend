@@ -16,11 +16,9 @@ CREATE TABLE IF NOT EXISTS "MembershipPlan" (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Insert default membership plans
+-- Insert single default membership plan (Gold only)
 INSERT INTO "MembershipPlan" (tier_name, tier_key, apple_product_id, price, currency, description, features, display_order) VALUES
-('Gold Lounge', 'gold', 'com.tan1007.privatemessage.gold_monthly', 19.99, 'USD', 'Gold membership tier with essential features', '["Invite up to 50 fans", "Private 1:1 chats in your lounge", "QR code invitations for fans", "Essential lounge customization options", "Priority onboarding support"]', 1),
-('Platinum Lounge', 'platinum', 'com.tan1007.privatemessage.platinum_monthly', 49.99, 'USD', 'Platinum membership tier with premium features', '["Invite up to 50 fans", "Private 1:1 chats in your lounge", "QR code invitations for fans", "Essential lounge customization options", "Priority onboarding support"]', 2),
-('Diamond Lounge', 'diamond', 'com.tan1007.privatemessage.diamond_monthly', 99.99, 'USD', 'Diamond membership tier with all premium features', '["Invite up to 50 fans", "Private 1:1 chats in your lounge", "QR code invitations for fans", "Essential lounge customization options", "Priority onboarding support"]', 3)
+('Gold Lounge', 'gold', 'com.tan1007.privatemessage.gold_monthly', 19.99, 'USD', 'Gold membership tier with essential features', '["Invite up to 50 fans", "Private 1:1 chats in your lounge", "QR code invitations for fans", "Essential lounge customization options", "Priority onboarding support"]', 1)
 ON CONFLICT (tier_key) DO NOTHING;
 
 -- Create indexes

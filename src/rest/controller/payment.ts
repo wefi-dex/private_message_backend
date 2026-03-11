@@ -439,10 +439,28 @@ export const checkCreatorPostingPermission = asyncHandler(
         user.email &&
         String(user.email).toLowerCase() === reviewEmail.toLowerCase()
       ) {
+        // Still include DB subscription when present (so client can verify seeded data)
+        const subResult = await pool.query(
+          `SELECT cps.id, cps.status, cps.end_date, psp.name as plan_name
+           FROM "CreatorPlatformSubscription" cps
+           JOIN "PlatformSubscriptionPlan" psp ON cps.plan_id = psp.id
+           WHERE cps.creator_id = $1 AND cps.status IN ('active', 'trial') AND cps.end_date > NOW()
+           ORDER BY cps.created_at DESC LIMIT 1`,
+          [creatorId],
+        )
+        const sub = subResult.rows[0]
         return res.status(200).json({
           success: true,
           canPost: true,
           message: 'Apple review creator (full access)',
+          ...(sub && {
+            subscription: {
+              id: sub.id,
+              planName: sub.plan_name,
+              status: sub.status,
+              endDate: sub.end_date,
+            },
+          }),
         })
       }
 

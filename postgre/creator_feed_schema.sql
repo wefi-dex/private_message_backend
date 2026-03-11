@@ -67,10 +67,12 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+DROP TRIGGER IF EXISTS update_creator_posts_updated_at ON creator_posts;
 CREATE TRIGGER update_creator_posts_updated_at
     BEFORE UPDATE ON creator_posts
     FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_post_comments_updated_at ON post_comments;
 CREATE TRIGGER update_post_comments_updated_at
     BEFORE UPDATE ON post_comments
     FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();

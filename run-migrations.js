@@ -19,9 +19,11 @@ const MIGRATION_ORDER = [
   'create_block_report_tables.sql',
   'creator_feed_schema.sql',
   'membership_plan_schema.sql',
+  'membership_plan_single_tier.sql',
   'creator_platform_subscription.sql',
   'create_payment_transaction_and_membership.sql',
   'payment_review_schema.sql',
+  'user_table_clean.sql',
 ];
 
 const postgreDir = path.join(__dirname, 'postgre');
