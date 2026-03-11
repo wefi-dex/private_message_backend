@@ -7,7 +7,10 @@ const connectionString =
   'postgresql://username:password@localhost:5432/private_message_db'
 const pool = new Pool({
   connectionString,
-  ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false },
+  ssl:
+    process.env.DATABASE_SSL === 'false'
+      ? false
+      : { rejectUnauthorized: false },
 })
 
 async function clearDatabase() {
@@ -22,16 +25,11 @@ async function clearDatabase() {
     `)
     const tables = tablesResult.rows.map((r) => r.tablename)
     if (tables.length === 0) {
-      console.log('Clear database: no tables in public schema')
       return
     }
     // Quote each table name (required for mixed-case like "User", "MembershipPlan")
     const quoted = tables.map((t) => `"${t}"`).join(', ')
     await client.query(`TRUNCATE ${quoted} RESTART IDENTITY CASCADE`)
-
-    console.log('Clear database: success')
-    console.log('  Tables truncated:', tables.length)
-    tables.forEach((t) => console.log('    -', t))
   } catch (error) {
     console.error('Clear database failed:', error.message)
     throw error
